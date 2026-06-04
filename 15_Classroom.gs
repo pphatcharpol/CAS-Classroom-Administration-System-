@@ -21,13 +21,10 @@ var PERIODS = [
   { p: 5, time: '12:40-13:30' }, { p: 6, time: '13:30-14:20' }, { p: 7, time: '14:20-15:10' }, { p: 8, time: '15:10-16:00' }
 ];
 var LUNCH_AFTER = 4;
-var COMMITTEE_POSITIONS = [
-  'หัวหน้าห้อง', 'รองหัวหน้าห้อง คนที่ 1', 'รองหัวหน้าห้อง คนที่ 2', 'เลขานุการ', 'เหรัญญิก',
-  'หัวหน้าฝ่ายวิชาการ', 'หัวหน้าฝ่ายกิจกรรม', 'หัวหน้าฝ่ายความสะอาด', 'หัวหน้าฝ่ายประชาสัมพันธ์', 'หัวหน้าฝ่ายปฏิคม/สวัสดิการ'
-];
+
 
 function Classroom_meta() {
-  return { weekdays: WEEKDAYS5, periods: PERIODS, lunch_after: LUNCH_AFTER, positions: COMMITTEE_POSITIONS };
+  return { weekdays: WEEKDAYS5, periods: PERIODS, lunch_after: LUNCH_AFTER };
 }
 
 // ตรวจสิทธิ์ + ระบุ class_id ตามบทบาท (นักเรียน = ห้องตนเอง)
@@ -58,97 +55,6 @@ function _classStudents_(classId) {
     .sort(function (a, b) { return (Number(a.number) || 999) - (Number(b.number) || 999); });
 }
 
-/* ════════ เวรประจำวัน (Duty roster) ═════════════════════════════ */
-function Duty_get(user, p) {
-  var classId = _classroomScope_(user, p);
-  var year = p.year || cfg_academicYear_(), term = p.term || '1';
-  var stdIdx = DB_index(SHEETS.STUDENTS);
-  var rows = DB_readAll(SHEETS.DUTY).filter(function (d) { return d.class_id === classId && String(d.academic_year) === String(year) && String(d.term) === String(term); });
-  var byDay = {};
-  WEEKDAYS5.forEach(function (w) { byDay[w.v] = []; });
-  rows.forEach(function (d) {
-    var s = stdIdx[d.student_id];
-    if (byDay[d.weekday]) byDay[d.weekday].push({ student_id: d.student_id, full_name: s ? ((s.title || '') + s.first_name + ' ' + s.last_name) : '-', number: s ? s.number : '', task: d.task || '' });
-  });
-  Object.keys(byDay).forEach(function (k) { byDay[k].sort(function (a, b) { return (Number(a.number) || 999) - (Number(b.number) || 999); }); });
-  return { class_id: classId, year: year, term: term, byDay: byDay, students: _classStudents_(classId) };
-}
-
-function Duty_save(user, p) {
-  var classId = p.class_id; _classroomScope_(user, p); Auth_require_(user, 'classroom.manage');
-  var year = p.year || cfg_academicYear_(), term = p.term || '1';
-  _clearWhere_(SHEETS.DUTY, function (d) { return d.class_id === classId && String(d.academic_year) === String(year) && String(d.term) === String(term); });
-  var rows = [];
-  (p.assignments || []).forEach(function (a) {
-    if (a.student_id && a.weekday) rows.push({ class_id: classId, academic_year: year, term: term, weekday: a.weekday, student_id: a.student_id, task: a.task || '', recorded_by: user.id });
-  });
-  if (rows.length) DB_bulkInsert(SHEETS.DUTY, rows);
-  Audit_log(user, 'duty', 'class', classId, 'จัดเวร ' + year + '/' + term + ' (' + rows.length + ' รายการ)');
-  return { count: rows.length };
-}
-
-// จัดเวรอัตโนมัติ — กระจายนักเรียนลง 5 วันแบบวนรอบ
-function Duty_auto(user, p) {
-  var classId = p.class_id; _classroomScope_(user, p); Auth_require_(user, 'classroom.manage');
-  var students = _classStudents_(classId);
-  var assignments = students.map(function (s, i) { return { student_id: s.id, weekday: (i % 5) + 1 }; });
-  return Duty_save(user, { class_id: classId, year: p.year, term: p.term, assignments: assignments });
-}
-
-/* ════════ คณะกรรมการห้อง (Committee) ════════════════════════════ */
-function Committee_get(user, p) {
-  var classId = _classroomScope_(user, p);
-  var year = p.year || cfg_academicYear_();
-  var stdIdx = DB_index(SHEETS.STUDENTS);
-  var rows = DB_readAll(SHEETS.COMMITTEE).filter(function (c) { return c.class_id === classId && String(c.academic_year) === String(year); });
-  rows.sort(function (a, b) { return (Number(a.position_order) || 99) - (Number(b.position_order) || 99); });
-  return {
-    class_id: classId, year: year, students: _classStudents_(classId),
-    members: rows.map(function (c) {
-      var s = stdIdx[c.student_id];
-      return { student_id: c.student_id, position: c.position, position_order: Number(c.position_order || 0), note: c.note || '', full_name: s ? ((s.title || '') + s.first_name + ' ' + s.last_name) : '-', number: s ? s.number : '', photo_url: s ? s.photo_url : '' };
-    })
-  };
-}
-
-function Committee_save(user, p) {
-  var classId = p.class_id; _classroomScope_(user, p); Auth_require_(user, 'classroom.manage');
-  var year = p.year || cfg_academicYear_();
-  _clearWhere_(SHEETS.COMMITTEE, function (c) { return c.class_id === classId && String(c.academic_year) === String(year); });
-  var rows = [];
-  (p.members || []).forEach(function (m, i) {
-    if (m.student_id && m.position) rows.push({ class_id: classId, academic_year: year, student_id: m.student_id, position: m.position, position_order: m.position_order != null ? m.position_order : i, note: m.note || '', recorded_by: user.id });
-  });
-  if (rows.length) DB_bulkInsert(SHEETS.COMMITTEE, rows);
-  Audit_log(user, 'committee', 'class', classId, 'คณะกรรมการห้อง ' + year + ' (' + rows.length + ')');
-  return { count: rows.length };
-}
-
-/* ════════ ผังที่นั่ง (Seating chart) ════════════════════════════ */
-function Seating_get(user, p) {
-  var classId = _classroomScope_(user, p);
-  var year = p.year || cfg_academicYear_();
-  var rec = DB_readAll(SHEETS.SEATING).filter(function (s) { return s.class_id === classId && String(s.academic_year) === String(year); })[0];
-  var seats = [];
-  if (rec) { try { seats = JSON.parse(rec.seats || '[]'); } catch (e) { seats = []; } }
-  return {
-    class_id: classId, year: year,
-    rows: rec ? Number(rec.rows) : 5, cols: rec ? Number(rec.cols) : 6,
-    seats: seats, students: _classStudents_(classId)
-  };
-}
-
-function Seating_save(user, p) {
-  var classId = p.class_id; _classroomScope_(user, p); Auth_require_(user, 'classroom.manage');
-  var year = p.year || cfg_academicYear_();
-  var existing = DB_readAll(SHEETS.SEATING).filter(function (s) { return s.class_id === classId && String(s.academic_year) === String(year); })[0];
-  var data = { class_id: classId, academic_year: year, rows: Number(p.rows || 5), cols: Number(p.cols || 6), seats: JSON.stringify(p.seats || []), updated_by: user.id };
-  var saved;
-  if (existing) saved = DB_update(SHEETS.SEATING, existing.id, data);
-  else saved = DB_insert(SHEETS.SEATING, data);
-  Audit_log(user, 'seating', 'class', classId, 'ผังที่นั่ง ' + year);
-  return saved;
-}
 
 /* ════════ ตารางเรียน (Timetable) ════════════════════════════════ */
 function Timetable_get(user, p) {
@@ -179,15 +85,4 @@ function Timetable_save(user, p) {
   if (rows.length) DB_bulkInsert(SHEETS.TIMETABLE, rows);
   Audit_log(user, 'timetable', 'class', classId, 'ตารางเรียน ' + year + '/' + term + ' (' + rows.length + ' คาบ)');
   return { count: rows.length };
-}
-
-// รวมข้อมูลห้องเรียนของนักเรียน (สำหรับหน้า me-classroom)
-function Classroom_mine(user) {
-  if (user.role !== 'student') throw new Error('PERMISSION_DENIED');
-  return {
-    timetable: Timetable_get(user, {}),
-    duty: Duty_get(user, {}),
-    committee: Committee_get(user, {}),
-    seating: Seating_get(user, {})
-  };
 }
