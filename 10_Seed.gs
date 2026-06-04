@@ -87,7 +87,6 @@ function Seed_run() {
         parent_name: 'นาย/นาง ' + _rand_(SEED.last) + ' ' + last,
         parent_relation: _rand_(['บิดา', 'มารดา', 'ผู้ปกครอง']),
         parent_phone: '09' + _randInt_(10000000, 99999999),
-        health_note: '', conduct_score: conduct, status: 'active'
       });
       var salt = Auth_salt_();
       userRows.push({
@@ -129,24 +128,9 @@ function Seed_run() {
   }
   DB_bulkInsert(SHEETS.ATTENDANCE, attRows);
 
-  // ── Conduct (สุ่มบางคน) ──
-  var conductRows = [];
-  studentRows.forEach(function (s) {
-    if (Math.random() < 0.35) {
-      var add = Math.random() < 0.5;
-      var cat = add ? _rand_(CONDUCT_CATS.add) : _rand_(CONDUCT_CATS.deduct);
-      conductRows.push({
-        date: cfg_dateOnly_(new Date(Date.now() - _randInt_(1, 20) * 864e5)),
-        student_id: s.id, class_id: s.class_id, type: add ? 'add' : 'deduct',
-        points: cat.points, category: cat.key, reason: cat.label,
-        evidence_url: '', recorded_by: 'system'
-      });
-    }
-  });
-  DB_bulkInsert(SHEETS.CONDUCT, conductRows);
 
-  // ── Home visits + Health (ตัวอย่างบางส่วน) ──
-  var visitRows = [], healthRows = [];
+  // ── Home visits ──
+  var visitRows = [];
   studentRows.forEach(function (s) {
     if (Math.random() < 0.4) {
       var risk = Math.random() < 0.15 ? 'high' : (Math.random() < 0.3 ? 'medium' : 'low');
@@ -172,20 +156,8 @@ function Seed_run() {
         photos_json: JSON.stringify({}), consent: true, cct_request: true
       });
     }
-    if (Math.random() < 0.6) {
-      var w = _randInt_(28, 65), h = _randInt_(125, 175);
-      var b = cfg_bmi_(w, h);
-      healthRows.push({
-        student_id: s.id, class_id: s.class_id,
-        record_date: cfg_dateOnly_(new Date(Date.now() - _randInt_(1, 90) * 864e5)),
-        term: 'ภาคเรียนที่ 1/' + year, weight: w, height: h, bmi: b.bmi, bmi_level: b.level,
-        vision_l: _rand_(['20/20', '20/30', '20/40']), vision_r: _rand_(['20/20', '20/30', '20/40']),
-        blood_pressure: '', note: '', recorded_by: 'system'
-      });
-    }
   });
   DB_bulkInsert(SHEETS.HOMEVISIT, visitRows);
-  DB_bulkInsert(SHEETS.HEALTH, healthRows);
 
   // ── Announcements ──
   var adminU = adminUser;  // ใช้ค่าที่ return จาก Seed_user_ (ไม่ DB_readAll กลาง batch — จะได้ cache เก่า)
@@ -193,7 +165,7 @@ function Seed_run() {
     { title: 'เปิดภาคเรียนที่ 1 ปีการศึกษา ' + (year - 543), category: 'general', pinned: true, body: 'ขอต้อนรับนักเรียนทุกคนเข้าสู่ภาคเรียนใหม่ พบกันที่โรงเรียนวันจันทร์ เวลา 08.00 น. แต่งกายชุดนักเรียนให้เรียบร้อย' },
     { title: 'กำหนดสอบกลางภาค', category: 'exam', pinned: false, body: 'การสอบกลางภาคจะจัดขึ้นในสัปดาห์ที่ 9 ของภาคเรียน ขอให้นักเรียนเตรียมตัวอ่านหนังสือล่วงหน้า' },
     { title: 'กิจกรรมวันไหว้ครู', category: 'activity', pinned: false, body: 'โรงเรียนจัดพิธีไหว้ครูประจำปี ขอเชิญนักเรียนทุกระดับชั้นเข้าร่วม ณ หอประชุมโรงเรียน' },
-    { title: 'ตรวจสุขภาพนักเรียนประจำปี', category: 'health', pinned: false, body: 'งานอนามัยโรงเรียนจะดำเนินการตรวจสุขภาพ ชั่งน้ำหนัก วัดส่วนสูง นักเรียนทุกคนตามตารางที่กำหนด' }
+
   ];
   var annRows = anns.map(function (a) {
     return {
@@ -204,130 +176,9 @@ function Seed_run() {
   });
   DB_bulkInsert(SHEETS.ANNOUNCE, annRows);
 
-  // ── Savings (ออมเงิน) — เดินบัญชีรายคน คำนวณ running balance ──
-  var savRows = [];
-  studentRows.forEach(function (s) {
-    if (Math.random() < 0.7) {
-      var n = _randInt_(2, 8), bal = 0, base = Date.now() - _randInt_(40, 90) * 864e5, ref = 0;
-      for (var i = 0; i < n; i++) {
-        var withdraw = i > 1 && Math.random() < 0.2 && bal > 50;
-        var amt = withdraw ? _randInt_(1, Math.min(5, Math.floor(bal / 20))) * 20 : _randInt_(1, 10) * 10;
-        if (withdraw && amt > bal) amt = bal;
-        bal += withdraw ? -amt : amt;
-        ref++;
-        var when = base + i * _randInt_(3, 9) * 864e5;
-        savRows.push({
-          tx_date: cfg_dateOnly_(new Date(when)),
-          student_id: s.id, class_id: s.class_id,
-          type: withdraw ? 'withdraw' : 'deposit', amount: amt, balance: bal,
-          note: withdraw ? 'ถอนเงินออม' : 'ฝากเงินออมประจำสัปดาห์',
-          ref_no: (withdraw ? 'WD' : 'DEP') + '-seed-' + ref, recorded_by: 'system',
-          created_at: cfg_iso_(new Date(when))
-        });
-      }
-    }
-  });
-  DB_bulkInsert(SHEETS.SAVINGS, savRows);
-
-  // ── SDQ + คัดกรอง 4 กลุ่ม (ประมาณ 40% ของนักเรียน) ──
-  var sdqRows = [], screenRows = [], term = '1/' + (year - 543);
-  var levels = ['normal', 'normal', 'normal', 'risk', 'problem'];
-  studentRows.forEach(function (s) {
-    if (Math.random() < 0.45) {
-      var ans = [];
-      for (var i = 0; i < 25; i++) ans.push(Math.random() < 0.7 ? 0 : _randInt_(0, 2));
-      var r = _sdqScore_(ans);
-      sdqRows.push({
-        student_id: s.id, class_id: s.class_id,
-        assess_date: cfg_dateOnly_(new Date(Date.now() - _randInt_(5, 40) * 864e5)), term: term, rater: 'teacher',
-        e_score: r.sum.e, c_score: r.sum.c, h_score: r.sum.h, p_score: r.sum.p, pro_score: r.sum.pro,
-        total: r.total, band_e: r.bands.e, band_c: r.bands.c, band_h: r.bands.h,
-        band_p: r.bands.p, band_pro: r.bands.pro, band_total: r.bands.total, overall: r.bands.total,
-        answers: JSON.stringify(ans), note: '', assessed_by: 'system'
-      });
-    }
-    if (Math.random() < 0.5) {
-      var sc = { learning: _rand_(levels), health: _rand_(['normal', 'normal', 'risk']), economic: _rand_(['normal', 'risk', 'problem']), family: _rand_(['normal', 'normal', 'risk']), behavior: _rand_(['normal', 'normal', 'normal', 'risk']), protection: 'normal', special_type: '', screened_by: 'system' };
-      var g = _autoGroup_(sc);
-      screenRows.push(Object.assign(sc, {
-        student_id: s.id, class_id: s.class_id, term: term,
-        screen_date: cfg_dateOnly_(new Date(Date.now() - _randInt_(5, 30) * 864e5)),
-        group: g, summary: g === 'normal' ? 'อยู่ในเกณฑ์ปกติ' : 'ควรติดตามดูแลอย่างใกล้ชิด',
-        help_action: g === 'normal' ? '' : 'ติดตาม ให้คำปรึกษา ประสานผู้ปกครอง', helped: g !== 'normal'
-      }));
-    }
-  });
-  DB_bulkInsert(SHEETS.SDQ, sdqRows);
-  DB_bulkInsert(SHEETS.SCREENING, screenRows);
-
-  // ── คำขอลา (ตัวอย่าง) ──
-  var leaveRows = [], pickSt = studentRows.slice(0, Math.min(12, studentRows.length));
-  pickSt.forEach(function (s, i) {
-    var sick = Math.random() < 0.5, from = new Date(Date.now() - _randInt_(1, 8) * 864e5);
-    var to = new Date(from.getTime() + _randInt_(0, 2) * 864e5);
-    var st = i < 4 ? 'pending' : (Math.random() < 0.8 ? 'approved' : 'rejected');
-    leaveRows.push({
-      student_id: s.id, class_id: s.class_id, leave_type: sick ? 'sick' : 'personal',
-      date_from: cfg_dateOnly_(from), date_to: cfg_dateOnly_(to),
-      days: Math.round((to - from) / 864e5) + 1,
-      reason: sick ? 'มีไข้ ไม่สบาย พักรักษาตัว' : 'มีธุระกับผู้ปกครอง', attachment_url: '',
-      status: st, review_note: '', requested_by: 'system', reviewed_by: st === 'pending' ? '' : 'system'
-    });
-  });
-  DB_bulkInsert(SHEETS.LEAVE, leaveRows);
-
-  // ── รายวิชา + ผลการเรียน + คุณลักษณะ (ภาคเรียนที่ 1) ──
-  var subjDefs = [
-    { area: 'ภาษาไทย', name: 'ภาษาไทย', credit: 1.0, abbr: 'ท' },
-    { area: 'คณิตศาสตร์', name: 'คณิตศาสตร์', credit: 1.0, abbr: 'ค' },
-    { area: 'วิทยาศาสตร์และเทคโนโลยี', name: 'วิทยาศาสตร์', credit: 1.5, abbr: 'ว' },
-    { area: 'สังคมศึกษา ศาสนาและวัฒนธรรม', name: 'สังคมศึกษา', credit: 1.0, abbr: 'ส' },
-    { area: 'สุขศึกษาและพลศึกษา', name: 'สุขศึกษาและพลศึกษา', credit: 0.5, abbr: 'พ' },
-    { area: 'ภาษาต่างประเทศ', name: 'ภาษาอังกฤษ', credit: 1.0, abbr: 'อ' }
-  ];
-  var subjRows = [], subjByClass = {};
-  classes.forEach(function (cls) {
-    var lvlNum = (String(cls.level).match(/\d+/) || ['1'])[0];
-    subjByClass[cls.id] = [];
-    subjDefs.forEach(function (d, i) {
-      var sid = cfg_uid_('SUB');
-      subjRows.push({ id: sid, code: d.abbr + lvlNum + '1010' + (i + 1), name: d.name, learning_area: d.area, credit: d.credit, type: 'core', level: cls.level, academic_year: year, term: '1', teacher_id: cls.homeroom_teacher_id, status: 'active' });
-      subjByClass[cls.id].push({ id: sid, credit: d.credit });
-    });
-  });
-  DB_bulkInsert(SHEETS.SUBJECTS, subjRows);
-
-  var gradeRows = [], gradeVals = ['4', '4', '3.5', '3', '3', '2.5', '2', '2', '1.5', '1'];
-  studentRows.forEach(function (s) {
-    (subjByClass[s.class_id] || []).forEach(function (su) {
-      gradeRows.push({ student_id: s.id, class_id: s.class_id, subject_id: su.id, academic_year: year, term: '1', score: '', grade: _rand_(gradeVals), credit: su.credit, recorded_by: 'system' });
-    });
-  });
-  DB_bulkInsert(SHEETS.GRADES, gradeRows);
-
-  var evalRows = [];
-  studentRows.forEach(function (s) {
-    if (Math.random() < 0.6) {
-      var e = { student_id: s.id, class_id: s.class_id, academic_year: year, term: '1', reading: _randInt_(2, 3), activity: 'pass', comment: 'มีความตั้งใจเรียนดี ปรับตัวเข้ากับเพื่อนได้', evaluated_by: 'system' };
-      for (var i = 1; i <= 8; i++) e['dq' + i] = _randInt_(2, 3);
-      evalRows.push(e);
-    }
-  });
-  DB_bulkInsert(SHEETS.EVALS, evalRows);
-
+  
   // ── บริหารห้องเรียน: เวร · กรรมการ · ผังที่นั่ง · ตารางเรียน ──
-  var dutyRows = [], commRows = [], seatRows = [], ttRows = [];
   classes.forEach(function (cls) {
-    var sts = studentRows.filter(function (s) { return s.class_id === cls.id; }).sort(function (a, b) { return a.number - b.number; });
-    // เวร — วนรอบ 5 วัน
-    sts.forEach(function (s, i) { dutyRows.push({ class_id: cls.id, academic_year: year, term: '1', weekday: (i % 5) + 1, student_id: s.id, task: 'ทำความสะอาดห้องเรียน', recorded_by: 'system' }); });
-    // คณะกรรมการห้อง
-    COMMITTEE_POSITIONS.forEach(function (pos, i) { if (sts[i]) commRows.push({ class_id: cls.id, academic_year: year, student_id: sts[i].id, position: pos, position_order: i, note: '', recorded_by: 'system' }); });
-    // ผังที่นั่ง 5×6
-    var rws = 5, cls_ = 6, seats = [], k = 0;
-    for (var r = 0; r < rws; r++) for (var c = 0; c < cls_; c++) { if (sts[k]) { seats.push({ r: r, c: c, student_id: sts[k].id }); k++; } }
-    seatRows.push({ class_id: cls.id, academic_year: year, rows: rws, cols: cls_, seats: JSON.stringify(seats), updated_by: 'system' });
-    // ตารางเรียน — วนรายวิชาของชั้น
     var subs = subjByClass[cls.id] || [], idx = 0;
     WEEKDAYS5.forEach(function (w) {
       PERIODS.forEach(function (per) {
@@ -337,34 +188,6 @@ function Seed_run() {
       });
     });
   });
-  DB_bulkInsert(SHEETS.DUTY, dutyRows);
-  DB_bulkInsert(SHEETS.COMMITTEE, commRows);
-  DB_bulkInsert(SHEETS.SEATING, seatRows);
-  DB_bulkInsert(SHEETS.TIMETABLE, ttRows);
-
-  // ── เงินกิจกรรม + การชำระ ──
-  var fundDefs = [
-    { title: 'ค่ากิจกรรมทัศนศึกษา', amount: 250, category: 'trip' },
-    { title: 'ค่าอุปกรณ์การเรียน', amount: 120, category: 'material' },
-    { title: 'กองทุนห้องเรียน', amount: 50, category: 'fund' }
-  ];
-  var fundRows = [], fundItemsByClass = {};
-  classes.forEach(function (cls) {
-    fundItemsByClass[cls.id] = [];
-    fundDefs.forEach(function (f) {
-      var fid = cfg_uid_('FND');
-      fundRows.push({ id: fid, class_id: cls.id, academic_year: year, term: '1', title: f.title, amount: f.amount, due_date: cfg_dateOnly_(new Date(Date.now() + 14 * 864e5)), category: f.category, note: '', created_by: 'system', status: 'active' });
-      fundItemsByClass[cls.id].push({ id: fid, amount: f.amount });
-    });
-  });
-  DB_bulkInsert(SHEETS.FUND_ITEMS, fundRows);
-  var payRows = [], rcSeq = 1;
-  studentRows.forEach(function (s) {
-    (fundItemsByClass[s.class_id] || []).forEach(function (fi) {
-      if (Math.random() < 0.65) payRows.push({ item_id: fi.id, student_id: s.id, class_id: s.class_id, paid: true, paid_amount: fi.amount, paid_date: cfg_dateOnly_(new Date(Date.now() - _randInt_(1, 12) * 864e5)), method: 'cash', receipt_no: 'RC' + (year - 543) + ('0000' + (rcSeq++)).slice(-5), note: '', recorded_by: 'system' });
-    });
-  });
-  DB_bulkInsert(SHEETS.FUND_PAY, payRows);
 
   // ── กิจกรรมพัฒนาผู้เรียน/จิตอาสา ──
   var actDefs = [
