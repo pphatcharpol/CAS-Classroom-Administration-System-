@@ -1,0 +1,613 @@
+<!--
+═══════════════════════════════════════════════════════════════
+ CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
+ File:        ScriptsCore.html — TH module · A framework · Auth · Shell · Router (eager)
+ Version:     1.0.0
+ Last Update: 2026-05-30
+ Developer:   ครูวิรัตน์  หาดคำ · www.kruwirat.com
+ License:     Proprietary · © 2026
+═══════════════════════════════════════════════════════════════
+-->
+<script>
+/* ════════ TH — Thai Date/Time (Single Source of Truth) ════════════ */
+var TH = {
+  MONTHS:['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'],
+  MONTHS_SHORT:['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'],
+  WEEKDAYS:['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'],
+  WEEKDAYS_SHORT:['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'],
+  pad_:function(n){return (n<10?'0':'')+n;},
+  parse:function(v){
+    if(v==null||v==='')return null;
+    if(v instanceof Date)return isNaN(v)?null:v;
+    var s=String(v);
+    if(/^\d{4}-\d{2}$/.test(s))return new Date(+s.slice(0,4),+s.slice(5,7)-1,1);
+    var d=new Date(s);return isNaN(d)?'__raw__':d;
+  },
+  beYear:function(d){return d.getFullYear()+543;},
+  date:function(v){var d=this.parse(v);if(d===null)return '-';if(d==='__raw__')return v;return d.getDate()+' '+this.MONTHS_SHORT[d.getMonth()]+' '+this.beYear(d);},
+  dateLong:function(v){var d=this.parse(v);if(d===null)return '-';if(d==='__raw__')return v;return d.getDate()+' '+this.MONTHS[d.getMonth()]+' '+this.beYear(d);},
+  dateWeekday:function(v){var d=this.parse(v);if(d===null)return '-';if(d==='__raw__')return v;return this.WEEKDAYS_SHORT[d.getDay()]+' '+d.getDate()+' '+this.MONTHS_SHORT[d.getMonth()]+' '+this.beYear(d);},
+  dateLongWeekday:function(v){var d=this.parse(v);if(d===null)return '-';if(d==='__raw__')return v;return 'วัน'+this.WEEKDAYS[d.getDay()]+'ที่ '+d.getDate()+' '+this.MONTHS[d.getMonth()]+' '+this.beYear(d);},
+  time:function(v){var d=this.parse(v);if(d===null||d==='__raw__')return '-';return this.pad_(d.getHours())+':'+this.pad_(d.getMinutes())+' น.';},
+  timeFull:function(v){var d=this.parse(v);if(d===null||d==='__raw__')return '-';return this.pad_(d.getHours())+':'+this.pad_(d.getMinutes())+':'+this.pad_(d.getSeconds())+' น.';},
+  dateTime:function(v){var d=this.parse(v);if(d===null)return '-';if(d==='__raw__')return v;return this.date(d)+' เวลา '+this.time(d);},
+  period:function(v){var d=this.parse(v);if(d===null)return '-';if(d==='__raw__')return v;return this.MONTHS[d.getMonth()]+' '+this.beYear(d);},
+  iso:function(v){var d=this.parse(v);if(d===null||d==='__raw__')return '';return d.getFullYear()+'-'+this.pad_(d.getMonth()+1)+'-'+this.pad_(d.getDate());},
+  relative:function(v){var d=this.parse(v);if(d===null||d==='__raw__')return '-';var s=(Date.now()-d.getTime())/1000;if(s<0)return this.date(d);if(s<60)return 'เมื่อสักครู่';if(s<3600)return Math.floor(s/60)+' นาทีที่แล้ว';if(s<86400)return Math.floor(s/3600)+' ชั่วโมงที่แล้ว';if(s<2592000)return Math.floor(s/86400)+' วันที่แล้ว';return this.date(d);},
+  smart:function(v){var d=this.parse(v);if(d===null||d==='__raw__')return this.date(v);var s=(Date.now()-d.getTime())/1000;return (s>=0&&s<604800)?this.relative(d):this.dateTime(d);}
+};
+
+/* ════════ A — App framework / UI helpers ═════════════════════════ */
+var A = {
+  $:function(s,r){return (r||document).querySelector(s);},
+  $$:function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));},
+  esc:function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});},
+  num:function(n){return Number(n||0).toLocaleString('th-TH');},
+  initials:function(name){var p=String(name||'').replace(/^(ด\.ช\.|ด\.ญ\.|นาย|นาง|นางสาว|น\.ส\.|ครู|เด็กชาย|เด็กหญิง)/,'').trim().split(/\s+/);return ((p[0]||'?').charAt(0)).toUpperCase();},
+  avatar:function(url,name,size,cls){
+    size=size||42;
+    if(url) return '<img class="avatar '+(cls||'')+'" data-name="'+A.esc(name)+'" data-size="'+size+'" style="width:'+size+'px;height:'+size+'px" src="'+A.esc(url)+'" referrerpolicy="no-referrer">';
+    return A.avatarFallback(name,size,cls);
+  },
+  avatarFallback:function(name,size,cls){size=size||42;return '<div class="avatar '+(cls||'')+'" style="width:'+size+'px;height:'+size+'px;font-size:'+(size*0.4)+'px">'+A.esc(A.initials(name))+'</div>';},
+
+  spinner:function(show,text){
+    var o=A.$('#spinner-overlay');
+    if(text)A.$('#spinner-text').textContent=text;
+    o.classList.toggle('show',!!show);
+  },
+  toast:function(type,title,msg,ms){
+    var icons={ok:'check-circle-fill',err:'x-octagon-fill',warn:'exclamation-triangle-fill',info:'info-circle-fill'};
+    var host=A.$('#toast-host');
+    var el=document.createElement('div');
+    el.className='toast '+(type||'info');
+    el.innerHTML='<i class="ti bi bi-'+(icons[type]||icons.info)+'"></i><div><b>'+A.esc(title)+'</b>'+(msg?'<small>'+A.esc(msg)+'</small>':'')+'</div>';
+    host.appendChild(el);
+    setTimeout(function(){el.style.transition='all .3s';el.style.opacity='0';el.style.transform='translateX(40px)';setTimeout(function(){el.remove();},320);},ms||3400);
+  },
+  ok:function(t,m){A.toast('ok',t,m);}, err:function(t,m){A.toast('err',t,m);}, info:function(t,m){A.toast('info',t,m);},
+
+  modal:function(opts){
+    A.closeModal();
+    var host=A.$('#modal-host');
+    var bd=document.createElement('div');
+    bd.className='modal-backdrop';
+    bd.innerHTML='<div class="modal-card '+(opts.size||'')+'">'+(opts.html||'')+'</div>';
+    host.appendChild(bd);
+    bd.addEventListener('click',function(e){if(e.target===bd&&opts.dismissable!==false)A.closeModal();});
+    A.$$('[data-close]',bd).forEach(function(b){b.addEventListener('click',A.closeModal);});
+    if(opts.onMount)opts.onMount(bd);
+    A.__modal=bd;
+    return bd;
+  },
+  closeModal:function(){if(A.__modal){A.__modal.remove();A.__modal=null;}},
+  confirm:function(opts){
+    return new Promise(function(resolve){
+      var danger=opts.danger;
+      A.modal({size:'',html:
+        '<div class="modal-body center" style="padding-top:30px">'
+        +'<div style="width:72px;height:72px;border-radius:22px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:34px;'+(danger?'background:var(--danger-bg);color:var(--danger)':'background:var(--grad-gold-soft);color:var(--gold)')+'"><i class="bi bi-'+(opts.icon||(danger?'exclamation-triangle-fill':'question-circle-fill'))+'"></i></div>'
+        +'<h3 style="font-family:var(--font);font-size:19px;margin-bottom:8px">'+A.esc(opts.title||'ยืนยัน')+'</h3>'
+        +'<p class="muted" style="margin-bottom:8px">'+A.esc(opts.message||'')+'</p></div>'
+        +'<div class="modal-foot"><button class="btn btn-ghost" id="cf-no">'+A.esc(opts.cancel||'ยกเลิก')+'</button>'
+        +'<button class="btn '+(danger?'btn-danger':'btn-primary')+'" id="cf-yes">'+A.esc(opts.confirm||'ยืนยัน')+'</button></div>',
+        onMount:function(bd){
+          A.$('#cf-no',bd).addEventListener('click',function(){A.closeModal();resolve(false);});
+          A.$('#cf-yes',bd).addEventListener('click',function(){A.closeModal();resolve(true);});
+        }
+      });
+    });
+  },
+  lightbox:function(src){var lb=A.$('#lightbox');A.$('#lightbox-img').src=src;lb.classList.add('show');},
+
+  /* Multi-state submit — แสดงสถานะ + disable ปุ่มกันกดซ้ำ (มาตรฐานบังคับทุกปุ่ม submit) */
+  submit:function(btn,state,label){
+    if(!btn)return;
+    btn.dataset.state=state;
+    if(state==='loading'){
+      if(btn.dataset._html==null)btn.dataset._html=btn.innerHTML; // เก็บ markup เดิมครั้งแรก
+      btn.disabled=true;btn.setAttribute('aria-busy','true');     // ★ disable จริง กันกดซ้ำ
+      btn.innerHTML='<span class="st st-loading"><span class="spin-inline"></span> '+(label||'กำลังดำเนินการ…')+'</span>';
+    } else if(state==='success'){
+      btn.disabled=true;
+      btn.innerHTML='<span class="st st-success"><i class="bi bi-check-lg"></i> '+(label||'สำเร็จ')+'</span>';
+      setTimeout(function(){A.submit(btn,'idle');},1200);
+    } else if(state==='error'){
+      btn.disabled=true;
+      btn.innerHTML='<span class="st st-error"><i class="bi bi-x-lg"></i> '+(label||'ไม่สำเร็จ')+'</span>';
+      setTimeout(function(){A.submit(btn,'idle');},1600);
+    } else { // idle — คืนสภาพ + เปิดปุ่ม
+      btn.disabled=false;btn.removeAttribute('aria-busy');
+      if(btn.dataset._html!=null){btn.innerHTML=btn.dataset._html;delete btn.dataset._html;}
+    }
+  },
+  busy:function(btn){return !!(btn&&btn.dataset.state==='loading');},
+  /* A.run — ครอบ handler ให้จัดการสถานะอัตโนมัติ + กัน re-entry (ใช้กับปุ่ม submit ทุกปุ่ม) */
+  run:function(btn,opts,fn){
+    opts=opts||{};
+    if(A.busy(btn))return Promise.resolve();   // ★ กำลังทำงานอยู่ → ไม่ยิงซ้ำ
+    A.submit(btn,'loading',opts.loading);
+    return Promise.resolve().then(fn).then(function(r){
+      A.submit(btn,'success',opts.success);
+      if(opts.ok)A.ok(opts.ok,opts.okMsg||'');
+      return r;
+    }).catch(function(e){
+      A.submit(btn,'error',opts.error);
+      A.err(opts.errTitle||'เกิดข้อผิดพลาด',(e&&e.message)?e.message:String(e));
+      throw e;
+    });
+  },
+  fileToDataUrl:function(file,maxW){
+    return new Promise(function(res,rej){
+      if(!file)return res('');
+      var r=new FileReader();
+      r.onload=function(){
+        var img=new Image();
+        img.onload=function(){
+          var w=img.width,h=img.height,mx=maxW||800;
+          if(w>mx){h=Math.round(h*mx/w);w=mx;}
+          var c=document.createElement('canvas');c.width=w;c.height=h;
+          c.getContext('2d').drawImage(img,0,0,w,h);
+          res(c.toDataURL('image/jpeg',0.85));
+        };
+        img.onerror=function(){res(r.result);};
+        img.src=r.result;
+      };
+      r.onerror=rej;r.readAsDataURL(file);
+    });
+  },
+
+  donut:function(segs,size){
+    size=size||150;var r=size/2-14,cx=size/2,cy=size/2,c=2*Math.PI*r;
+    var total=segs.reduce(function(s,x){return s+x.value;},0)||1;var off=0;
+    var rings=segs.filter(function(s){return s.value>0;}).map(function(s){
+      var len=s.value/total*c;var el='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+s.color+'" stroke-width="14" stroke-dasharray="'+len+' '+(c-len)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 '+cx+' '+cy+')" stroke-linecap="round"/>';off+=len;return el;
+    }).join('');
+    return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'"><circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="var(--cream-3)" stroke-width="14"/>'+rings
+      +'<text x="'+cx+'" y="'+(cy-2)+'" text-anchor="middle" font-family="Kanit" font-weight="800" font-size="26" fill="var(--ink)">'+A.num(total)+'</text>'
+      +'<text x="'+cx+'" y="'+(cy+18)+'" text-anchor="middle" font-family="Sarabun" font-size="11" fill="var(--muted)">รวม</text></svg>';
+  },
+  bars:function(data){
+    var max=Math.max.apply(null,data.map(function(d){return d.value;}).concat([1]));
+    return '<div class="bars">'+data.map(function(d){
+      return '<div class="bar-col"><div class="bv">'+(d.value||0)+(d.suffix||'')+'</div><div class="bar" style="height:'+Math.max(3,(d.value/max*100))+'%;'+(d.color?'background:'+d.color:'')+'"></div><div class="bl">'+A.esc(d.label)+'</div></div>';
+    }).join('')+'</div>';
+  },
+  empty:function(icon,title,msg,cta){
+    return '<div class="empty"><div class="ic"><i class="bi bi-'+icon+'"></i></div><h3>'+A.esc(title)+'</h3><p>'+A.esc(msg||'')+'</p>'+(cta||'')+'</div>';
+  },
+  skeletonCards:function(n){var h='';for(var i=0;i<(n||6);i++)h+='<div class="skeleton sk-card"></div>';return '<div class="cards">'+h+'</div>';},
+
+  /* ════ Premium Print Document — Standalone HTML window + Browser print-to-PDF ════ */
+  printDoc:function(opts){
+    var w=window.open('','_blank','width=940,height=780');
+    if(!w){A.toast('warn','โปรดอนุญาตป๊อปอัป','เปิดการใช้งานป๊อปอัปในเบราว์เซอร์ก่อนพิมพ์เอกสาร',4500);return;}
+    var b=Store.boot||{},app=b.app||{},dev=b.dev||{},st=b.settings||{};
+    var org=opts.org||st.school_name||app.org||'', wm=opts.watermark||app.short||'CAS';
+    var docNo=opts.docNo||('DOC-'+new Date().getFullYear());
+    var metas=['<span class="pr-meta"><i class="bi bi-printer"></i> พิมพ์เมื่อ '+TH.dateTime(new Date())+'</span>'];
+    if(opts.period)metas.push('<span class="pr-meta"><i class="bi bi-clock-history"></i> '+A.esc(opts.period)+'</span>');
+    if(Store.user)metas.push('<span class="pr-meta"><i class="bi bi-person-badge"></i> โดย '+A.esc(Store.user.full_name)+'</span>');
+    var sigList=opts.signatures===false?null:(opts.signatures||[{role:'ผู้บันทึก'},{role:'ผู้ตรวจสอบ'},{role:'ผู้อำนวยการ'}]);
+    var sigs=sigList?('<div class="pr-signatures">'+sigList.map(function(s){return '<div class="pr-sign"><div class="pr-sign-line"></div>'+(s.name?'<div class="pr-sign-name">'+A.esc(s.name)+'</div>':'<div class="pr-sign-name">&nbsp;</div>')+'<div class="pr-sign-role">('+A.esc(s.role)+')</div></div>';}).join('')+'</div>'):'';
+    var html='<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>'+A.esc(opts.title||'เอกสาร')+'</title>'
+      +'<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">'
+      +'<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">'
+      +'<style>'+A.printDocCss_(opts.orientation)+'</style></head><body class="pr-doc">'
+      +'<div class="pr-toolbar sd-no-print"><div class="pr-tb-t"><i class="bi bi-eye"></i> ตัวอย่างก่อนพิมพ์</div>'
+      +'<div class="pr-tb-a"><button class="pr-btn pr-ghost" id="pr-close"><i class="bi bi-x-lg"></i> ปิด</button>'
+      +'<button class="pr-btn pr-primary" id="pr-print"><i class="bi bi-printer-fill"></i> พิมพ์ / บันทึก PDF</button></div></div>'
+      +'<div class="pr-page"><div class="pr-watermark">'+A.esc(wm)+'</div>'
+      +'<div class="pr-header"><div class="pr-logo"><i class="bi bi-'+(app.logo_icon||'mortarboard-fill')+'"></i></div>'
+      +'<div class="pr-org"><div class="pr-org-name">'+A.esc(org)+'</div><div class="pr-org-sub">'+A.esc(st.school_motto||'')+'</div></div>'
+      +'<div class="pr-docno"><div class="pr-docno-l">เลขที่เอกสาร</div><div class="pr-docno-v">'+A.esc(docNo)+'</div></div></div>'
+      +'<div class="pr-title-block">'+(opts.pill?'<span class="pr-pill">'+A.esc(opts.pill)+'</span>':'')
+      +'<h1 class="pr-title">'+A.esc(opts.title||'')+'</h1>'+(opts.subtitle?'<div class="pr-subtitle">'+A.esc(opts.subtitle)+'</div>':'')
+      +'<div class="pr-metas">'+metas.join('')+'</div></div>'
+      +'<div class="pr-body">'+(opts.content||'')+'</div>'+sigs
+      +'<div class="pr-footer"><div><i class="bi bi-'+(app.logo_icon||'mortarboard-fill')+'"></i> สร้างโดย '+A.esc(app.name||'')+' · v'+A.esc(app.version||'')+'</div>'
+      +'<div>ผู้พัฒนา '+A.esc(dev.NAME||'')+' · '+A.esc((dev.URL||'').replace(/^https?:\/\//,''))+'</div></div>'
+      +'</div>'
+      +'<scr'+'ipt>var P=document.getElementById("pr-print"),C=document.getElementById("pr-close");'
+      +'P.addEventListener("click",function(){window.print();});C.addEventListener("click",function(){window.close();});'
+      +'window.focus();</scr'+'ipt></body></html>';
+    w.document.open();w.document.write(html);w.document.close();
+  },
+  printDocCss_:function(orient){
+    var land=orient==='landscape';
+    return '@page{size:A4 '+(land?'landscape':'portrait')+';margin:14mm 13mm 16mm 13mm}'
+      +'*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+      +'body.pr-doc{margin:0;background:#ECE7DC;font-family:Sarabun,sans-serif;color:#2C2A22}'
+      +'.pr-toolbar{position:sticky;top:0;z-index:9;display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:#2C2A22;color:#fff}'
+      +'.pr-tb-t{font-family:Kanit;font-weight:600;font-size:15px}.pr-tb-a{display:flex;gap:10px}'
+      +'.pr-btn{border:0;border-radius:10px;padding:9px 16px;font-family:Kanit;font-weight:600;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px}'
+      +'.pr-primary{background:linear-gradient(135deg,#B8860B,#D4AF37);color:#fff}.pr-ghost{background:#fff;color:#2C2A22}'
+      +'.pr-page{position:relative;background:#fff;width:'+(land?'277mm':'190mm')+';min-height:'+(land?'190mm':'277mm')+';margin:22px auto;padding:24px 26px;box-shadow:0 10px 40px rgba(0,0,0,.25);overflow:hidden}'
+      +'.pr-watermark{position:absolute;top:46%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-family:Kanit;font-weight:800;font-size:120px;color:#B8860B;opacity:.05;white-space:nowrap;pointer-events:none}'
+      +'.pr-header{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;padding-bottom:14px;border-bottom:3px double #D4AF37}'
+      +'.pr-logo{width:58px;height:58px;border-radius:14px;background:linear-gradient(135deg,#B8860B,#D4AF37,#E6C75A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:30px}'
+      +'.pr-org-name{font-family:Kanit;font-weight:800;font-size:21px;color:#2C2A22}.pr-org-sub{font-size:12.5px;color:#8A8270}'
+      +'.pr-docno{text-align:right}.pr-docno-l{font-size:10.5px;color:#8A8270}.pr-docno-v{font-family:Kanit;font-weight:700;color:#8A6608;font-size:14px}'
+      +'.pr-title-block{text-align:center;padding:18px 0 12px}'
+      +'.pr-pill{display:inline-block;background:linear-gradient(135deg,#B8860B,#D4AF37);color:#fff;font-family:Kanit;font-weight:700;font-size:11px;letter-spacing:1px;padding:3px 14px;border-radius:99px;margin-bottom:8px}'
+      +'.pr-title{font-family:Kanit;font-weight:800;font-size:23px;margin:0;color:#2C2A22}'
+      +'.pr-subtitle{color:#5C5644;font-size:14px;margin-top:4px}'
+      +'.pr-metas{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}'
+      +'.pr-meta{font-size:11.5px;color:#6B6450;background:#FBF5E3;border:1px solid #F0E6C8;border-radius:99px;padding:3px 11px}'
+      +'.pr-body{margin:8px 0 6px}'
+      +'.pr-section{font-family:Kanit;font-weight:700;font-size:14.5px;color:#8A6608;border-left:4px solid #D4AF37;background:linear-gradient(90deg,#FBF5E3,transparent);padding:7px 12px;border-radius:0 8px 8px 0;margin:16px 0 10px}'
+      +'.pr-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}'
+      +'.pr-stat{border:1px solid #F0E6C8;border-radius:12px;padding:12px;text-align:center;background:#FFFDF7}'
+      +'.pr-stat .v{font-family:Kanit;font-weight:800;font-size:20px;color:#2C2A22}.pr-stat .l{font-size:11.5px;color:#8A8270}'
+      +'.pr-table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0;border-radius:10px;overflow:hidden;border:1px solid #EFE3C2}'
+      +'.pr-table thead{display:table-header-group}'
+      +'.pr-table th{background:linear-gradient(135deg,#8A6608,#B8860B);color:#fff;font-family:Kanit;font-weight:600;padding:9px 11px;text-align:left;font-size:12.5px}'
+      +'.pr-table td{padding:8px 11px;border-bottom:1px solid #F4EAD0}'
+      +'.pr-table tbody tr:nth-child(even){background:#FFFDF7}.pr-table tr{page-break-inside:avoid}'
+      +'.pr-r{text-align:right}.pr-c{text-align:center}'
+      +'.pr-badge{display:inline-block;padding:2px 9px;border-radius:7px;font-size:11px;font-weight:700;font-family:Kanit}'
+      +'.pr-b-dep{background:#E7F4E8;color:#2E7D32}.pr-b-wd{background:#FBEAEA;color:#C62828}'
+      +'.pr-signatures{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:42px;page-break-inside:avoid}'
+      +'.pr-sign{text-align:center}.pr-sign-line{border-bottom:1px dotted #8A8270;margin:0 8px 8px;height:34px}'
+      +'.pr-sign-name{font-family:Kanit;font-size:13px}.pr-sign-role{font-size:12px;color:#6B6450;margin-top:2px}'
+      +'.pr-footer{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:30px;padding-top:12px;border-top:1px solid #EFE3C2;font-size:10.5px;color:#8A8270}'
+      +'@media print{.sd-no-print{display:none!important}body.pr-doc{background:#fff}.pr-page{box-shadow:none;margin:0;width:auto;min-height:auto;padding:0}}';
+  }
+};
+
+/* ════════ Store + API ════════════════════════════════════════════ */
+var Store={token:'',user:null,caps:[],boot:null,page:'',pageData:{}};
+var Routes={};
+
+function call(action,payload){
+  return new Promise(function(resolve,reject){
+    google.script.run
+      .withSuccessHandler(function(res){
+        var r;try{r=JSON.parse(res);}catch(e){reject(new Error('การตอบกลับไม่ถูกต้อง'));return;}
+        if(r.ok){resolve(r.data);}
+        else{
+          if(r.code==='AUTH'){A.err('เซสชันหมดอายุ','กรุณาเข้าสู่ระบบใหม่');doLogout(true);}
+          reject(new Error(r.error||'เกิดข้อผิดพลาด'));
+        }
+      })
+      .withFailureHandler(function(err){reject(new Error((err&&err.message)||'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ'));})
+      .api(action,JSON.stringify(payload||{}),Store.token);
+  });
+}
+function can(cap){return Store.caps.indexOf('*')>=0||Store.caps.indexOf(cap)>=0;}
+
+/* ════════ Boot (read inline state) ═══════════════════════════════ */
+function boot(){
+  try{
+    var el=document.getElementById('boot-data');
+    Store.boot=JSON.parse(el.textContent||'{}');
+  }catch(e){Store.boot={};}
+  Store.token=localStorage.getItem('cas_token')||'';
+  if(Store.token){
+    call('app.boot_all',{}).then(function(d){
+      Store.boot=Object.assign(Store.boot||{},d);
+      if(d.me){Store.user=d.me;Store.caps=d.caps||[];}
+      else{Store.token='';localStorage.removeItem('cas_token');}
+      startClock();dispatch();
+    }).catch(function(){startClock();dispatch();});
+  }else{startClock();dispatch();}
+}
+
+/* ════════ Lazy load Pages module ═════════════════════════════════ */
+function loadPages(){
+  if(window.__casPages)return Promise.resolve();
+  window.__casPages=true;
+  return new Promise(function(resolve){
+    var src=document.getElementById('sps-pages-script');
+    if(!src){resolve();return;}
+    var s=document.createElement('script');s.text=src.textContent;document.body.appendChild(s);
+    setTimeout(resolve,40);
+  });
+}
+
+/* ════════ Auth ═══════════════════════════════════════════════════ */
+function doLogin(username,password,btn){
+  A.submit(btn,'loading','กำลังเข้าสู่ระบบ…');
+  call('auth.login',{username:username,password:password,user_agent:navigator.userAgent}).then(function(d){
+    Store.token=d.token;Store.user=d.user;Store.caps=d.caps||[];
+    localStorage.setItem('cas_token',d.token);
+    A.submit(btn,'success','สำเร็จ');
+    A.ok('ยินดีต้อนรับ',d.user.full_name);
+    setTimeout(function(){location.hash='#/dashboard';dispatch();},500);
+  }).catch(function(e){A.submit(btn,'error','ไม่สำเร็จ');A.err('เข้าสู่ระบบไม่สำเร็จ',e.message);});
+}
+function doLogout(silent){
+  call('auth.logout',{}).catch(function(){});
+  Store.token='';Store.user=null;Store.caps=[];localStorage.removeItem('cas_token');
+  A.closeModal();
+  if(!silent)A.info('ออกจากระบบแล้ว','');
+  location.hash='';dispatch();
+}
+
+/* ════════ Login screen ═══════════════════════════════════════════ */
+function renderLogin(){
+  var b=Store.boot||{};var app=b.app||{};var dev=b.dev||{};
+  var demos=[
+    {u:'admin',p:'admin',r:'admin',n:'ผู้ดูแลระบบ',c:'#6A1B9A'},
+    {u:'kru1',p:'kru1',r:'homeroom',n:'ครูประจำชั้น',c:'var(--gold)'},
+    {u:'teacher1',p:'teacher1',r:'teacher',n:'ครูผู้สอน',c:'#1565C0'},
+    {u:'student',p:'student',r:'student',n:'นักเรียน',c:'#2E7D32'}
+  ];
+  var icons=b.role_icons||{};
+  var demoHtml=demos.map(function(d){
+    return '<button type="button" class="lf-demo-card" data-u="'+d.u+'" data-p="'+d.p+'"><div class="di" style="background:'+d.c+'"><i class="bi bi-'+(icons[d.r]||'person')+'"></i></div><div><b>'+d.n+'</b><small>'+d.u+' / '+d.p+'</small></div></button>';
+  }).join('');
+  A.$('#app-root').innerHTML=
+    '<div class="login"><div class="login-brand"><div class="lb-beam"></div>'
+    +'<div class="lb-top"><div class="lb-logo"><i class="bi bi-'+(app.logo_icon||'mortarboard-fill')+'"></i></div>'
+    +'<div class="lb-title">'+A.esc(app.title||'ระบบงานธุรการชั้นเรียน')+'</div>'
+    +'<div class="lb-desc">'+A.esc(app.description||'')+'</div>'
+    +'<div class="lb-feats">'
+    +'<div class="lb-feat"><i class="bi bi-people-fill"></i> ข้อมูลนักเรียน · ชั้นเรียน ครบทุกมิติ</div>'
+    +'<div class="lb-feat"><i class="bi bi-clipboard-check-fill"></i> เช็กชื่อ · คะแนนความประพฤติ แบบเรียลไทม์</div>'
+    +'<div class="lb-feat"><i class="bi bi-house-heart-fill"></i> เยี่ยมบ้าน · สุขภาพ · ประกาศและรายงาน</div></div></div>'
+    +'<div class="lb-foot"><i class="bi bi-shield-check"></i> ปลอดภัยระดับองค์กร · '+A.esc(app.org||'')+'</div></div>'
+    +'<div class="login-form"><div class="lf-card">'
+    +'<div class="lf-head"><div class="ic"><i class="bi bi-box-arrow-in-right"></i></div><h2>เข้าสู่ระบบ</h2><p>ยินดีต้อนรับสู่ '+A.esc(app.short||'CAS')+'</p></div>'
+    +'<form id="login-form">'
+    +'<div class="field"><label>ชื่อผู้ใช้</label><div class="inwrap"><i class="bi bi-person"></i><input id="lg-user" autocomplete="username" placeholder="เช่น admin หรือเลขประจำตัว" required></div></div>'
+    +'<div class="field"><label>รหัสผ่าน</label><div class="inwrap"><i class="bi bi-lock"></i><input id="lg-pass" type="password" autocomplete="current-password" placeholder="รหัสผ่าน" required><button type="button" class="eye" id="lg-eye"><i class="bi bi-eye"></i></button></div></div>'
+    +'<button type="submit" class="btn btn-primary btn-block" data-state="idle" id="lg-btn"><span class="st st-idle"><i class="bi bi-box-arrow-in-right"></i> เข้าสู่ระบบ</span></button>'
+    +'</form>'
+    +'<div class="lf-demos"><div class="lbl">— บัญชีทดลองใช้งาน (คลิกเพื่อกรอกอัตโนมัติ) —</div><div class="lf-demo-grid">'+demoHtml+'</div></div>'
+    +'</div></div></div>';
+
+  var form=A.$('#login-form');
+  form.addEventListener('submit',function(e){e.preventDefault();doLogin(A.$('#lg-user').value.trim(),A.$('#lg-pass').value,A.$('#lg-btn'));});
+  A.$('#lg-eye').addEventListener('click',function(){var i=A.$('#lg-pass');i.type=i.type==='password'?'text':'password';this.innerHTML='<i class="bi bi-eye'+(i.type==='text'?'-slash':'')+'"></i>';});
+  A.$$('.lf-demo-card').forEach(function(c){c.addEventListener('click',function(){A.$('#lg-user').value=c.dataset.u;A.$('#lg-pass').value=c.dataset.p;doLogin(c.dataset.u,c.dataset.p,A.$('#lg-btn'));});});
+}
+
+/* ════════ Navigation config ══════════════════════════════════════ */
+function navConfig(){
+  var role=Store.user.role;
+  var groups=[];
+  groups.push({label:'ภาพรวม',items:[{h:'#/dashboard',i:'grid-1x2-fill',t:'แดชบอร์ด'}]});
+  if(role==='student'){
+    groups.push({label:'ข้อมูลของฉัน',items:[
+      {h:'#/me-attendance',i:'calendar-check',t:'การมาเรียน'},
+      {h:'#/me-grades',i:'mortarboard',t:'ผลการเรียน'},
+      {h:'#/me-classroom',i:'easel2',t:'ห้องเรียนของฉัน'},
+      {h:'#/me-conduct',i:'award',t:'คะแนนความประพฤติ'},
+      {h:'#/me-savings',i:'piggy-bank',t:'เงินออม'},
+      {h:'#/me-fund',i:'wallet2',t:'เงินกิจกรรม'},
+      {h:'#/me-activities',i:'heart',t:'ชั่วโมงกิจกรรม'},
+      {h:'#/me-leave',i:'calendar2-x',t:'ขอลา'},
+      {h:'#/me-health',i:'heart-pulse',t:'สุขภาพ'}
+    ]});
+    groups.push({label:'ข่าวสาร',items:[{h:'#/announcements',i:'megaphone',t:'ประกาศ'},{h:'#/calendar',i:'calendar-event',t:'ปฏิทินกิจกรรม'}]});
+  }else{
+    var info=[];
+    if(can('student.view'))info.push({h:'#/students',i:'people-fill',t:'นักเรียน'});
+    if(can('class.view'))info.push({h:'#/classes',i:'door-open-fill',t:'ชั้นเรียน'});
+    groups.push({label:'งานทะเบียน',items:info});
+    var work=[];
+    if(can('attendance.view'))work.push({h:'#/attendance',i:'calendar-check-fill',t:'เช็กชื่อ'});
+    if(can('conduct.view'))work.push({h:'#/conduct',i:'award-fill',t:'ความประพฤติ'});
+    if(can('savings.view'))work.push({h:'#/savings',i:'piggy-bank-fill',t:'ออมเงิน'});
+    if(can('visit.view'))work.push({h:'#/visits',i:'house-heart-fill',t:'เยี่ยมบ้าน'});
+    if(can('health.view'))work.push({h:'#/health',i:'heart-pulse-fill',t:'สุขภาพ'});
+    if(work.length)groups.push({label:'งานดูแลนักเรียน',items:work});
+    var care=[];
+    if(can('care.view')){care.push({h:'#/sdq',i:'clipboard2-pulse-fill',t:'SDQ ประเมินพฤติกรรม'});care.push({h:'#/screening',i:'diagram-3-fill',t:'คัดกรอง 4 กลุ่ม'});}
+    if(can('leave.view'))care.push({h:'#/leave',i:'calendar2-week-fill',t:'การลา'});
+    if(care.length)groups.push({label:'ดูแลช่วยเหลือนักเรียน',items:care});
+    var acad=[];
+    if(can('grade.view')){acad.push({h:'#/subjects',i:'journal-bookmark-fill',t:'รายวิชา'});acad.push({h:'#/grades',i:'card-checklist',t:'บันทึกผลการเรียน'});}
+    if(can('eval.manage')||can('grade.view'))acad.push({h:'#/eval',i:'patch-check-fill',t:'ประเมินคุณลักษณะ'});
+    if(can('grade.view'))acad.push({h:'#/documents',i:'file-earmark-text-fill',t:'เอกสาร ปพ. (สมุดพก/ปพ.1)'});
+    if(acad.length)groups.push({label:'งานวัดผล & เอกสาร (ปพ.)',items:acad});
+    if(can('classroom.view'))groups.push({label:'บริหารห้องเรียน',items:[
+      {h:'#/timetable',i:'calendar3-week-fill',t:'ตารางเรียน'},
+      {h:'#/duty',i:'bucket-fill',t:'เวรประจำวัน'},
+      {h:'#/committee',i:'diagram-2-fill',t:'คณะกรรมการห้อง'},
+      {h:'#/seating',i:'grid-3x3-gap-fill',t:'ผังที่นั่ง'}
+    ]});
+    var money=[];
+    if(can('fund.view'))money.push({h:'#/fund',i:'wallet-fill',t:'เงินกิจกรรม'});
+    if(can('activity.view'))money.push({h:'#/activities',i:'heart-fill',t:'กิจกรรมพัฒนาผู้เรียน'});
+    if(money.length)groups.push({label:'การเงิน & กิจกรรม',items:money});
+    var comm=[{h:'#/announcements',i:'megaphone-fill',t:'ประกาศ'}];
+    if(can('event.view'))comm.push({h:'#/calendar',i:'calendar-event-fill',t:'ปฏิทินกิจกรรม'});
+    if(can('report.view'))comm.push({h:'#/reports',i:'bar-chart-fill',t:'รายงาน'});
+    groups.push({label:'ข่าวสาร & รายงาน',items:comm});
+    if(role==='admin'){
+      groups.push({label:'ผู้ดูแลระบบ',items:[
+        {h:'#/users',i:'person-gear',t:'บัญชีผู้ใช้'},
+        {h:'#/audit',i:'clock-history',t:'บันทึกการใช้งาน'}
+      ]});
+    }
+  }
+  return groups;
+}
+
+/* ════════ Shell ══════════════════════════════════════════════════ */
+function renderShell(){
+  var b=Store.boot||{};var app=b.app||{};var dev=b.dev||{};var u=Store.user;
+  var groups=navConfig();
+  var navHtml=groups.map(function(g){
+    if(!g.items.length)return '';
+    return '<div class="sb-group"><div class="sb-group-label">'+A.esc(g.label)+'</div>'
+      +g.items.map(function(it){return '<a class="sb-item" data-nav href="'+it.h+'"><i class="bi bi-'+it.i+'"></i> '+A.esc(it.t)+'</a>';}).join('')+'</div>';
+  }).join('');
+
+  A.$('#app-root').innerHTML=
+    '<div class="shell">'
+    +'<div class="sb-backdrop" id="sb-backdrop"></div>'
+    +'<aside class="sidebar" id="sidebar">'
+    +'<div class="sb-header"><div class="sb-brand"><div class="ic"><i class="bi bi-'+(app.logo_icon||'mortarboard-fill')+'"></i></div>'
+    +'<div><b>'+A.esc(app.short||'CAS')+'</b><small>'+A.esc(app.org||'')+'</small></div></div>'
+    +'<div class="sb-clock"><div class="t" id="sb-clock-t">--:--:--</div><div class="d" id="sb-clock-d">—</div></div></div>'
+    +'<nav class="sb-nav">'+navHtml+'</nav>'
+    +'<div class="sb-foot"><div class="sb-user" id="sb-user">'+A.avatar(u.photo_url,u.full_name,42)
+    +'<div style="min-width:0;flex:1"><b>'+A.esc(u.full_name)+'</b><small>'+A.esc(u.role_label)+'</small></div>'
+    +'<i class="bi bi-chevron-right" style="color:var(--muted)"></i></div></div></aside>'
+    +'<div class="main"><header class="navbar">'
+    +'<button class="nav-burger" id="nav-burger"><i class="bi bi-list"></i></button>'
+    +'<div class="nav-title" id="nav-title">แดชบอร์ด</div>'
+    +'<div class="nav-right"><span class="nav-clock" id="nav-clock">—</span>'
+    +'<div class="nav-chip" id="nav-chip"><span class="role-chip role-'+u.role+'"><i class="bi bi-'+((b.role_icons||{})[u.role]||'person')+'"></i> '+A.esc(u.role_label)+'</span>'+A.avatar(u.photo_url,u.full_name,32)+'</div></div>'
+    +'</header><div class="content" id="page"></div>'
+    +'<footer class="footer"><div class="dev">'+A.avatar(dev.LOGO,dev.NAME,34)+'<div><b style="font-family:var(--font);color:var(--ink)">'+A.esc(app.name||'')+'</b><div style="font-size:12px">พัฒนาโดย <a href="'+A.esc(dev.URL)+'" target="_blank" rel="noopener">'+A.esc(dev.NAME)+'</a> · v'+A.esc(app.version)+'</div></div></div>'
+    +'<div>© 2026 · '+A.esc(app.org||'')+' · สงวนลิขสิทธิ์</div></footer>'
+    +'<nav class="bottom-nav" id="bottom-nav">'
+    +'<a class="bn-item" data-bn href="#/dashboard"><i class="bi bi-house-door-fill"></i><span>หน้าแรก</span></a>'
+    +'<a class="bn-item" data-bn href="#/menu"><i class="bi bi-grid-fill"></i><span>เมนู</span></a>'
+    +'<a class="bn-item" data-bn href="#/announcements"><i class="bi bi-megaphone-fill"></i><span>ประกาศ</span></a>'
+    +'<button class="bn-item" id="bn-profile"><i class="bi bi-person-circle"></i><span>ฉัน</span></button>'
+    +'</nav></div></div>';
+
+  // wire shell
+  A.$$('[data-nav]').forEach(function(a){a.addEventListener('click',function(){closeSidebar();});});
+  A.$('#nav-burger').addEventListener('click',toggleSidebar);
+  A.$('#sb-backdrop').addEventListener('click',closeSidebar);
+  A.$('#sb-user').addEventListener('click',openProfileMenu);
+  A.$('#nav-chip').addEventListener('click',openProfileMenu);
+  A.$$('[data-bn]').forEach(function(a){a.addEventListener('click',closeSidebar);});
+  A.$('#bn-profile').addEventListener('click',openProfileMenu);
+  Store.__shell=true;
+}
+function toggleSidebar(){A.$('#sidebar').classList.toggle('open');A.$('#sb-backdrop').classList.toggle('show');}
+function closeSidebar(){A.$('#sidebar').classList.remove('open');A.$('#sb-backdrop').classList.remove('show');}
+
+function setActiveNav(hash){
+  A.$$('.sb-item').forEach(function(a){a.classList.toggle('active',a.getAttribute('href')===hash);});
+  A.$$('.bn-item[data-bn]').forEach(function(a){a.classList.toggle('active',a.getAttribute('href')===hash);});
+}
+function greeting(){var h=new Date().getHours();return h<12?'สวัสดีตอนเช้า':h<16?'สวัสดีตอนบ่าย':h<19?'สวัสดีตอนเย็น':'สวัสดีตอนค่ำ';}
+function isMobile(){return window.matchMedia&&window.matchMedia('(max-width:768px)').matches;}
+function setTitle(t,sub){var el=A.$('#nav-title');if(el)el.innerHTML=A.esc(t)+(sub?'<small>'+A.esc(sub)+'</small>':'');}
+
+/* ════════ Clock ══════════════════════════════════════════════════ */
+function startClock(){
+  if(window.__casClock)clearInterval(window.__casClock);
+  function tick(){
+    var now=new Date();
+    var t=TH.pad_(now.getHours())+':'+TH.pad_(now.getMinutes())+':'+TH.pad_(now.getSeconds());
+    var ct=A.$('#sb-clock-t');if(ct)ct.textContent=t;
+    var cd=A.$('#sb-clock-d');if(cd)cd.textContent=TH.dateLongWeekday(now);
+    var nc=A.$('#nav-clock');if(nc)nc.textContent=TH.dateWeekday(now)+' · '+t.slice(0,5)+' น.';
+  }
+  tick();window.__casClock=setInterval(tick,1000);
+}
+
+/* ════════ Router ═════════════════════════════════════════════════ */
+function dispatch(){
+  if(!Store.token||!Store.user){A.spinner(false);renderLogin();return;}
+  loadPages().then(function(){
+    if(!Store.__shell||!A.$('.shell'))renderShell();
+    var hash=location.hash||'#/dashboard';
+    var route=hash.split('?')[0];
+    var handler=Routes[route]||Routes['#/dashboard'];
+    setActiveNav(route);
+    var page=A.$('#page');
+    if(page)page.innerHTML=A.skeletonCards(4);
+    if(handler){try{handler(parseQuery(hash));}catch(e){console.error(e);if(page)page.innerHTML=A.empty('exclamation-octagon','เกิดข้อผิดพลาด',e.message);}}
+    window.scrollTo(0,0);
+  });
+}
+function parseQuery(hash){
+  var q={};var i=hash.indexOf('?');if(i<0)return q;
+  hash.slice(i+1).split('&').forEach(function(p){var kv=p.split('=');q[decodeURIComponent(kv[0])]=decodeURIComponent(kv[1]||'');});
+  return q;
+}
+function go(hash){location.hash=hash;}
+window.addEventListener('hashchange',dispatch);
+
+/* ════════ Profile menu / modals ══════════════════════════════════ */
+function openProfileMenu(){
+  var u=Store.user;var b=Store.boot||{};
+  A.modal({html:
+    '<div class="md-hero">'+A.avatar(u.photo_url,u.full_name,78)+'<div><h2>'+A.esc(u.full_name)+'</h2><div class="sub"><span class="role-chip role-'+u.role+'" style="background:rgba(255,255,255,.2);color:#fff"><i class="bi bi-'+((b.role_icons||{})[u.role]||'person')+'"></i> '+A.esc(u.role_label)+'</span> · '+A.esc(u.username)+'</div></div></div>'
+    +'<div class="modal-body" style="display:grid;gap:10px">'
+    +'<button class="btn btn-ghost btn-block" id="pm-edit" style="justify-content:flex-start"><i class="bi bi-person-vcard"></i> แก้ไขข้อมูลส่วนตัว</button>'
+    +'<button class="btn btn-ghost btn-block" id="pm-pw" style="justify-content:flex-start"><i class="bi bi-key"></i> เปลี่ยนรหัสผ่าน</button>'
+    +'<button class="btn btn-danger btn-block" id="pm-out" style="justify-content:flex-start"><i class="bi bi-box-arrow-right"></i> ออกจากระบบ</button>'
+    +'</div>',
+    onMount:function(bd){
+      A.$('#pm-edit',bd).addEventListener('click',openProfileEdit);
+      A.$('#pm-pw',bd).addEventListener('click',openChangePw);
+      A.$('#pm-out',bd).addEventListener('click',function(){doLogout();});
+    }
+  });
+}
+function openProfileEdit(){
+  var u=Store.user;
+  A.modal({size:'',html:
+    '<div class="modal-head grad"><div class="mh-ic"><i class="bi bi-person-vcard"></i></div><h3>แก้ไขข้อมูลส่วนตัว</h3><button class="modal-x" data-close><i class="bi bi-x-lg"></i></button></div>'
+    +'<div class="modal-body"><div class="center mb"><label style="cursor:pointer"><div id="pf-prev">'+A.avatar(u.photo_url,u.full_name,90)+'</div><input type="file" id="pf-photo" accept="image/*" class="hide"><div class="muted" style="font-size:12px;margin-top:6px"><i class="bi bi-camera"></i> เปลี่ยนรูป</div></label></div>'
+    +'<div class="form-grid">'
+    +'<div class="field full"><label>ชื่อ-นามสกุล</label><input class="input" id="pf-name" value="'+A.esc(u.full_name)+'"></div>'
+    +'<div class="field"><label>อีเมล</label><input class="input" id="pf-email" value="'+A.esc(u.email||'')+'"></div>'
+    +'<div class="field"><label>เบอร์โทร</label><input class="input" id="pf-phone" value="'+A.esc(u.phone||'')+'"></div>'
+    +'</div></div>'
+    +'<div class="modal-foot"><button class="btn btn-ghost" data-close>ยกเลิก</button><button class="btn btn-primary" data-state="idle" id="pf-save"><span class="st st-idle"><i class="bi bi-check-lg"></i> บันทึก</span></button></div>',
+    onMount:function(bd){
+      var photo='';
+      A.$('#pf-photo',bd).addEventListener('change',function(e){A.fileToDataUrl(e.target.files[0],600).then(function(d){photo=d;A.$('#pf-prev',bd).innerHTML='<img class="avatar" style="width:90px;height:90px" src="'+d+'">';});});
+      A.$('#pf-save',bd).addEventListener('click',function(){
+        var btn=this;A.submit(btn,'loading');
+        var p={full_name:A.$('#pf-name',bd).value,email:A.$('#pf-email',bd).value,phone:A.$('#pf-phone',bd).value};
+        if(photo)p.photo=photo;
+        call('profile.update',p).then(function(d){Store.user=d;A.submit(btn,'success');A.ok('บันทึกสำเร็จ','');setTimeout(function(){A.closeModal();renderShell();dispatch();},700);}).catch(function(e){A.submit(btn,'error');A.err('ผิดพลาด',e.message);});
+      });
+    }
+  });
+}
+function openChangePw(){
+  A.modal({html:
+    '<div class="modal-head grad"><div class="mh-ic"><i class="bi bi-key"></i></div><h3>เปลี่ยนรหัสผ่าน</h3><button class="modal-x" data-close><i class="bi bi-x-lg"></i></button></div>'
+    +'<div class="modal-body"><div class="field"><label>รหัสผ่านเดิม</label><input class="input" type="password" id="cp-old"></div>'
+    +'<div class="field"><label>รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)</label><input class="input" type="password" id="cp-new"></div>'
+    +'<div class="field"><label>ยืนยันรหัสผ่านใหม่</label><input class="input" type="password" id="cp-new2"></div></div>'
+    +'<div class="modal-foot"><button class="btn btn-ghost" data-close>ยกเลิก</button><button class="btn btn-primary" data-state="idle" id="cp-save"><span class="st st-idle"><i class="bi bi-check-lg"></i> เปลี่ยนรหัสผ่าน</span></button></div>',
+    onMount:function(bd){
+      A.$('#cp-save',bd).addEventListener('click',function(){
+        var btn=this;var o=A.$('#cp-old',bd).value,n=A.$('#cp-new',bd).value,n2=A.$('#cp-new2',bd).value;
+        if(n!==n2){A.err('รหัสผ่านไม่ตรงกัน','');return;}
+        A.submit(btn,'loading');
+        call('auth.change_pw',{old_pw:o,new_pw:n}).then(function(){A.submit(btn,'success');A.ok('เปลี่ยนรหัสผ่านสำเร็จ','');setTimeout(A.closeModal,700);}).catch(function(e){A.submit(btn,'error');A.err('ผิดพลาด',e.message);});
+      });
+    }
+  });
+}
+
+/* lightbox close + ripple delegation */
+document.addEventListener('click',function(e){
+  var lb=A.$('#lightbox');if(lb&&lb.classList.contains('show')&&(e.target===lb||e.target.id==='lightbox-img'&&false))lb.classList.remove('show');
+  var btn=e.target.closest&&e.target.closest('.btn');
+  if(btn&&!btn.disabled){var r=document.createElement('span');r.className='ripple';var rect=btn.getBoundingClientRect();var s=Math.max(rect.width,rect.height);r.style.width=r.style.height=s+'px';r.style.left=(e.clientX-rect.left-s/2)+'px';r.style.top=(e.clientY-rect.top-s/2)+'px';btn.appendChild(r);setTimeout(function(){r.remove();},600);}
+});
+A.$('#lightbox').addEventListener('click',function(){this.classList.remove('show');});
+/* avatar image fallback → initials (CSP-safe: capture-phase error listener, ไม่ใช้ inline onerror) */
+document.addEventListener('error',function(e){
+  var t=e.target;
+  if(t&&t.tagName==='IMG'&&t.classList&&t.classList.contains('avatar')&&!t.dataset.fb){
+    t.dataset.fb='1';
+    t.outerHTML=A.avatarFallback(t.getAttribute('data-name')||'',+(t.dataset.size||42),'');
+  }
+},true);
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){A.closeModal();A.$('#lightbox').classList.remove('show');}});
+
+/* go() exposed for inline data-go via delegation */
+document.addEventListener('click',function(e){var g=e.target.closest&&e.target.closest('[data-go]');if(g){go(g.getAttribute('data-go'));}});
+
+/* ★ Hash-link interceptor (capture phase) — กัน <base target="_top"> พา parent ไปโหลด hash ใหม่ → จอขาว
+   (pitfall: GAS SPA + base target=_top + hash router) */
+document.addEventListener('click',function(e){
+  var a=e.target.closest&&e.target.closest('a[href]');
+  if(!a)return;
+  var href=a.getAttribute('href');
+  if(!href||href.charAt(0)!=='#')return;
+  if(a.target&&a.target!=='_top'&&a.target!=='_self')return;
+  e.preventDefault();
+  if(href===location.hash)dispatch();else location.hash=href;
+},true);
+
+boot();
+</script>
