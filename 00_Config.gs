@@ -1,0 +1,351 @@
+/**
+ * ═══════════════════════════════════════════════════════════════
+ *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
+ *  File:        00_Config.gs — ค่าคงที่ · Schemas · RBAC · Helpers (Single Source of Truth)
+ *  Version:     1.0.0
+ *  Last Update: 2026-05-30
+ *  Developer:   ครูวิรัตน์  หาดคำ · www.kruwirat.com
+ *  License:     Proprietary · © 2026
+ * ═══════════════════════════════════════════════════════════════
+ */
+
+/** ───────────────────────────────────────────────────────────────
+ *  APP — Single source of truth ของชื่อระบบ/เวอร์ชัน/ผู้พัฒนา
+ *  ใช้ร่วมกันทั้ง doGet · Sheet Menu · About · Footer · Client boot
+ *  ─────────────────────────────────────────────────────────────── */
+var APP = {
+  SHORT:        'CAS',
+  NAME:         'CAS · ระบบงานธุรการชั้นเรียน',
+  TITLE:        'ระบบงานธุรการชั้นเรียน',
+  DESCRIPTION:  'ระบบบริหารงานธุรการชั้นเรียนครบวงจร — ข้อมูลนักเรียน · เช็กชื่อ · คะแนนความประพฤติ · เยี่ยมบ้าน · สุขภาพ · ประกาศและรายงาน สำหรับโรงเรียนประถมและมัธยมศึกษา',
+  VERSION:      '1.0.0',
+  LAST_UPDATED: '2026-05-30',
+  ORG:          'โรงเรียนวังน้ำคู้ศึกษา',
+  LOGO_ICON:    'mortarboard-fill',
+  TIMEZONE:     'Asia/Bangkok',
+  MOTTO:     'ปัญญา เป็นแสงสว่างแห่งโลก',
+
+  DEV: {
+    NAME:  'ครูที  พชรพล',
+    URL:   'https://www.kruwirat.com',
+    EMAIL: 'phatcharapol.ch@nu.ac.th',
+    LOGO:  'https://lh3.googleusercontent.com/d/1m1Q-kruwirat-avatar'  // fallback hidden onerror
+  }
+};
+
+/** ───────────────────────────────────────────────────────────────
+ *  SHEETS — ชื่อชีต (tab) ทั้งหมดที่ใช้เป็นตารางฐานข้อมูล
+ *  ─────────────────────────────────────────────────────────────── */
+var SHEETS = {
+  USERS:      'Users',
+  CLASSES:    'Classes',
+  STUDENTS:   'Students',
+  ATTENDANCE: 'Attendance',
+  CONDUCT:    'Conduct',
+  HOMEVISIT:  'HomeVisits',
+  HEALTH:     'HealthRecords',
+  ANNOUNCE:   'Announcements',
+  SAVINGS:    'Savings',
+  SDQ:        'SdqAssessments',
+  SCREENING:  'Screenings',
+  LEAVE:      'LeaveRequests',
+  SUBJECTS:   'Subjects',
+  GRADES:     'Grades',
+  EVALS:      'LearnerEvals',
+  DUTY:       'Duties',
+  COMMITTEE:  'Committee',
+  SEATING:    'Seating',
+  TIMETABLE:  'Timetable',
+  FUND_ITEMS: 'FundItems',
+  FUND_PAY:   'FundPayments',
+  ACTIVITY:   'ActivityLogs',
+  EVENTS:     'Events',
+  AUDIT:      'AuditLog',
+  SESSIONS:   'Sessions',
+  SETTINGS:   'Settings'
+};
+
+/** ───────────────────────────────────────────────────────────────
+ *  SCHEMAS — คอลัมน์ของแต่ละชีต (ลำดับสำคัญ = ลำดับคอลัมน์จริง)
+ *  ค่าวันเวลาเก็บเป็น ISO เสมอ (Client แปลงเป็นไทยตอน render ด้วย TH module)
+ *  ─────────────────────────────────────────────────────────────── */
+var SCHEMAS = {
+  Users: [
+    'id','username','password_hash','salt','role','full_name','photo_url',
+    'email','phone','student_id','class_id','title','must_change_pw',
+    'last_login','status','created_at','updated_at'
+  ],
+  Classes: [
+    'id','academic_year','level','room','grade_band','homeroom_teacher_id',
+    'co_teacher_id','capacity','color','note','status','created_at','updated_at'
+  ],
+  Students: [
+    'id','student_code','title','first_name','last_name','nickname','class_id',
+    'number','gender','birthdate','id_card','blood_type','address','phone',
+    'parent_name','parent_relation','parent_phone','photo_url','health_note',
+    'conduct_score','status','created_at','updated_at'
+  ],
+  Attendance: [
+    'id','date','class_id','student_id','status','check_in','note',
+    'recorded_by','source','created_at','updated_at'
+  ],
+  Conduct: [
+    'id','date','student_id','class_id','type','points','category','reason',
+    'evidence_url','recorded_by','created_at'
+  ],
+  HomeVisits: [
+    'id','student_id','class_id','visit_date','address','gps_lat','gps_lng',
+    'photo_url','family_status','economic_status','risk_level','findings',
+    'recommendation','visited_by','created_at','updated_at',
+    // ── แบบ นร./กสศ.01 — แบบขอรับเงินอุดหนุนนักเรียนยากจน ──
+    'academic_term','live_with','guardian_name','guardian_relation','guardian_education',
+    'guardian_occupation','guardian_phone','guardian_idcard','state_welfare',
+    'household_size','household_income','income_per_capita','poverty_status',
+    'members_json','survey_json','travel_json','addr_json','photos_json',
+    'consent','cct_request'
+  ],
+  HealthRecords: [
+    'id','student_id','class_id','record_date','term','weight','height','bmi',
+    'bmi_level','vision_l','vision_r','blood_pressure','note','recorded_by','created_at'
+  ],
+  Announcements: [
+    'id','title','body','category','target_role','target_class','pinned',
+    'cover_url','author_id','publish_at','status','views','created_at','updated_at'
+  ],
+  Savings: [
+    'id','tx_date','student_id','class_id','type','amount','balance',
+    'note','ref_no','recorded_by','created_at'
+  ],
+  SdqAssessments: [
+    'id','student_id','class_id','assess_date','term','rater',
+    'e_score','c_score','h_score','p_score','pro_score','total',
+    'band_e','band_c','band_h','band_p','band_pro','band_total','overall',
+    'answers','note','assessed_by','created_at'
+  ],
+  Screenings: [
+    'id','student_id','class_id','term','screen_date','learning','health',
+    'economic','family','behavior','protection','group','special_type',
+    'summary','help_action','helped','screened_by','created_at','updated_at'
+  ],
+  LeaveRequests: [
+    'id','student_id','class_id','leave_type','date_from','date_to','days',
+    'reason','attachment_url','status','review_note','requested_by',
+    'reviewed_by','created_at','updated_at'
+  ],
+  Subjects: [
+    'id','code','name','learning_area','credit','type','level',
+    'academic_year','term','teacher_id','status','created_at','updated_at'
+  ],
+  Grades: [
+    'id','student_id','class_id','subject_id','academic_year','term',
+    'score','grade','credit','recorded_by','created_at','updated_at'
+  ],
+  LearnerEvals: [
+    'id','student_id','class_id','academic_year','term',
+    'dq1','dq2','dq3','dq4','dq5','dq6','dq7','dq8',
+    'reading','activity','comment','evaluated_by','created_at','updated_at'
+  ],
+  Duties: [
+    'id','class_id','academic_year','term','weekday','student_id','task','recorded_by','created_at'
+  ],
+  Committee: [
+    'id','class_id','academic_year','student_id','position','position_order','note','recorded_by','created_at'
+  ],
+  Seating: [
+    'id','class_id','academic_year','rows','cols','seats','updated_by','created_at','updated_at'
+  ],
+  Timetable: [
+    'id','class_id','academic_year','term','weekday','period','subject_id',
+    'subject_text','teacher_text','room','recorded_by','created_at'
+  ],
+  FundItems: [
+    'id','class_id','academic_year','term','title','amount','due_date',
+    'category','note','created_by','status','created_at','updated_at'
+  ],
+  FundPayments: [
+    'id','item_id','student_id','class_id','paid','paid_amount','paid_date',
+    'method','receipt_no','note','recorded_by','created_at','updated_at'
+  ],
+  ActivityLogs: [
+    'id','student_id','class_id','academic_year','activity_type','title','hours',
+    'activity_date','location','note','recorded_by','created_at'
+  ],
+  Events: [
+    'id','title','event_type','event_date','end_date','time','location',
+    'target_role','target_class','description','color','created_by','status','created_at','updated_at'
+  ],
+  AuditLog: [
+    'id','user_id','username','role','action','entity','entity_id',
+    'detail','user_agent','created_at'
+  ],
+  Sessions: [
+    'token','user_id','username','role','user_agent','created_at','expires_at'
+  ],
+  Settings: [ 'key','value','updated_at' ]
+};
+
+/** ───────────────────────────────────────────────────────────────
+ *  RBAC — บทบาท · ป้ายกำกับ · ความสามารถ (capabilities)
+ *  capability = action string ที่ API ตรวจก่อนทำงานทุกครั้ง
+ *  ─────────────────────────────────────────────────────────────── */
+var ROLES = ['admin', 'homeroom', 'teacher', 'student'];
+
+var ROLE_LABEL = {
+  admin:    'ผู้ดูแลระบบ',
+  homeroom: 'ครูประจำชั้น',
+  teacher:  'ครูผู้สอน',
+  student:  'นักเรียน'
+};
+
+var ROLE_ICON = {
+  admin:    'shield-lock-fill',
+  homeroom: 'person-badge-fill',
+  teacher:  'easel2-fill',
+  student:  'mortarboard-fill'
+};
+
+// ความสามารถระดับโมดูล — '*' = ทุกสิทธิ์ (admin)
+var CAPS = {
+  admin: ['*'],
+  homeroom: [
+    'student.view','student.manage',
+    'class.view','class.manage_own',
+    'attendance.view','attendance.record',
+    'conduct.view','conduct.record',
+    'visit.view','visit.record',
+    'health.view','health.record',
+    'savings.view','savings.manage',
+    'care.view','care.manage',
+    'leave.view','leave.approve',
+    'grade.view','grade.manage','eval.manage','subject.manage',
+    'classroom.view','classroom.manage',
+    'fund.view','fund.manage','activity.view','activity.manage','event.view','event.manage',
+    'announce.view','announce.manage',
+    'report.view','report.class',
+    'user.view_class','profile.edit'
+  ],
+  teacher: [
+    'student.view','class.view',
+    'attendance.view','attendance.record',
+    'conduct.view','conduct.record',
+    'health.view',
+    'savings.view','savings.manage',
+    'care.view',
+    'leave.view',
+    'grade.view','grade.manage','subject.manage',
+    'classroom.view',
+    'fund.view','activity.view','activity.manage','event.view',
+    'announce.view',
+    'report.view',
+    'profile.edit'
+  ],
+  student: [
+    'self.view','self.attendance','self.conduct','self.health','self.savings','self.leave','self.grade','self.classroom',
+    'self.fund','self.activity','event.view',
+    'announce.view','profile.edit'
+  ]
+};
+
+var STATUS_LABEL = {
+  active: 'ใช้งาน', inactive: 'ปิดใช้งาน', graduated: 'จบการศึกษา',
+  transferred: 'ย้ายออก', suspended: 'พักการเรียน', deleted: 'ลบแล้ว',
+  draft: 'ฉบับร่าง', published: 'เผยแพร่', archived: 'จัดเก็บ'
+};
+
+// สถานะการมาเรียน (Attendance)
+var ATT_STATUS = {
+  present: { label: 'มาเรียน',  icon: 'check-circle-fill', color: '#2E7D32' },
+  late:    { label: 'มาสาย',    icon: 'clock-history',     color: '#C9A227' },
+  leave:   { label: 'ลากิจ',    icon: 'envelope-paper',    color: '#1565C0' },
+  sick:    { label: 'ลาป่วย',   icon: 'bandaid',           color: '#6A1B9A' },
+  absent:  { label: 'ขาดเรียน', icon: 'x-circle-fill',     color: '#C62828' },
+  activity:{ label: 'กิจกรรม',  icon: 'flag',              color: '#00838F' }
+};
+
+var CONDUCT_BASE = 100; // คะแนนความประพฤติเริ่มต้นของนักเรียนทุกคน
+
+/** ───────────────────────────────────────────────────────────────
+ *  Spreadsheet & helpers — ใช้ Active Spreadsheet (ไม่ผูก ID)
+ *  ─────────────────────────────────────────────────────────────── */
+function cfg_ss_() {
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+function cfg_now_() {
+  return cfg_iso_(new Date());
+}
+
+// ISO datetime ตาม timezone ไทย (server เก็บ ISO เสมอ)
+function cfg_iso_(d) {
+  if (!(d instanceof Date)) d = new Date(d);
+  return Utilities.formatDate(d, APP.TIMEZONE, "yyyy-MM-dd'T'HH:mm:ssXXX");
+}
+
+function cfg_dateOnly_(d) {
+  if (!(d instanceof Date)) d = new Date(d);
+  return Utilities.formatDate(d, APP.TIMEZONE, 'yyyy-MM-dd');
+}
+
+function cfg_period_(d) {
+  if (!(d instanceof Date)) d = new Date(d);
+  return Utilities.formatDate(d, APP.TIMEZONE, 'yyyy-MM');
+}
+
+// Normalize เป็นวันที่ล้วน 'yyyy-MM-dd' — กัน Sheet auto-coerce สตริงวันที่เป็น Date
+// (อ่านกลับมาเป็น ISO datetime เต็ม ทำให้เทียบ === กับ 'yyyy-MM-dd' ไม่ตรง)
+function cfg_d10_(v) {
+  if (v instanceof Date) return cfg_dateOnly_(v);
+  return String(v == null ? '' : v).substring(0, 10);
+}
+
+// Unique id: prefix + base36 timestamp + random — sortable พอประมาณ
+function cfg_uid_(prefix) {
+  var t = Date.now().toString(36).toUpperCase();
+  var r = Math.floor(Math.random() * 1296).toString(36).toUpperCase();
+  return (prefix || 'ID') + '-' + t + (r.length < 2 ? '0' + r : r);
+}
+
+// ปีการศึกษา (พ.ศ.) — ก่อน เม.ย. = ปีก่อน
+function cfg_academicYear_() {
+  var d = new Date();
+  var y = d.getFullYear() + 543;
+  return (d.getMonth() + 1) < 4 ? (y - 1) : y; // ก.พ./มี.ค. นับเป็นปีการศึกษาก่อน
+}
+
+// ระดับชั้น → ช่วงชั้น (สำหรับ filter ประถม/มัธยม)
+function cfg_gradeBand_(level) {
+  var s = String(level || '');
+  if (/^ป\./.test(s) || /^ป /.test(s)) return 'primary';
+  if (/^ม\.[123]\b/.test(s) || /^ม\.[123]$/.test(s)) return 'lower-secondary';
+  if (/^ม\.[456]\b/.test(s) || /^ม\.[456]$/.test(s)) return 'upper-secondary';
+  if (/^ม\./.test(s)) return 'secondary';
+  if (/^อ\./.test(s)) return 'kindergarten';
+  return 'other';
+}
+
+var GRADE_BAND_LABEL = {
+  'kindergarten': 'อนุบาล',
+  'primary': 'ประถมศึกษา',
+  'lower-secondary': 'มัธยมศึกษาตอนต้น',
+  'upper-secondary': 'มัธยมศึกษาตอนปลาย',
+  'secondary': 'มัธยมศึกษา',
+  'other': 'อื่น ๆ'
+};
+
+// คำนวณ BMI + ระดับ (เกณฑ์อย่างง่ายสำหรับโรงเรียน)
+function cfg_bmi_(weightKg, heightCm) {
+  var w = Number(weightKg), h = Number(heightCm) / 100;
+  if (!w || !h) return { bmi: '', level: '' };
+  var bmi = w / (h * h);
+  var level = 'normal';
+  if (bmi < 18.5) level = 'underweight';
+  else if (bmi < 23) level = 'normal';
+  else if (bmi < 25) level = 'overweight';
+  else level = 'obese';
+  return { bmi: Math.round(bmi * 10) / 10, level: level };
+}
+
+var BMI_LABEL = {
+  underweight: 'น้ำหนักน้อย', normal: 'สมส่วน',
+  overweight: 'ท้วม', obese: 'อ้วน'
+};
