@@ -79,7 +79,6 @@ function Student_enrich_(s, classIdx) {
     full_name: ((s.title || '') + s.first_name + ' ' + s.last_name).trim(),
     class_label: c ? (c.level + '/' + c.room) : '-',
     grade_band: c ? c.grade_band : '',
-    conduct_score: s.conduct_score === '' || s.conduct_score == null ? CONDUCT_BASE : Number(s.conduct_score)
   });
 }
 
@@ -89,9 +88,7 @@ function Student_list(user, p) {
   var classIdx = DB_index(SHEETS.CLASSES);
   var rows = DB_readAll(SHEETS.STUDENTS).filter(function (s) { return s.status !== 'deleted'; });
 
-  if (user.role === 'student') {
-    rows = rows.filter(function (s) { return s.id === user.student_id; });
-  } else if (scope) {
+  if (scope) {
     rows = rows.filter(function (s) { return scope.indexOf(s.class_id) >= 0; });
   }
   if (p.class_id) rows = rows.filter(function (s) { return s.class_id === p.class_id; });
@@ -132,7 +129,7 @@ function Student_save(user, p) {
     id_card: p.id_card || '', blood_type: p.blood_type || '',
     address: p.address || '', phone: p.phone || '',
     parent_name: p.parent_name || '', parent_relation: p.parent_relation || '',
-    parent_phone: p.parent_phone || '', health_note: p.health_note || '',
+    parent_phone: p.parent_phone || '', 
     status: p.status || 'active'
   };
   if (!data.first_name || !data.last_name) throw new Error('กรุณาระบุชื่อและนามสกุล');
@@ -148,30 +145,12 @@ function Student_save(user, p) {
     saved = DB_update(SHEETS.STUDENTS, p.id, data);
     Audit_log(user, 'update', 'student', p.id, data.first_name);
   } else {
-    data.conduct_score = CONDUCT_BASE;
     saved = DB_insert(SHEETS.STUDENTS, data);
     Audit_log(user, 'create', 'student', saved.id, data.first_name);
-    // สร้างบัญชีนักเรียนอัตโนมัติ (username = เลขประจำตัว, รหัสเริ่มต้น = เลขประจำตัว)
-    if (p.create_account !== false) Student_makeAccount_(saved);
   }
   return saved;
 }
 
-function Student_makeAccount_(s) {
-  var exists = DB_readAll(SHEETS.USERS).some(function (u) {
-    return String(u.username).toLowerCase() === String(s.student_code).toLowerCase();
-  });
-  if (exists) return null;
-  var salt = Auth_salt_();
-  return DB_insert(SHEETS.USERS, {
-    username: String(s.student_code).toLowerCase(),
-    password_hash: Auth_hash_(s.student_code, salt), salt: salt,
-    role: 'student', full_name: (s.title || '') + s.first_name + ' ' + s.last_name,
-    photo_url: s.photo_url || '', email: '', phone: s.phone || '',
-    student_id: s.id, class_id: s.class_id, title: s.title || '',
-    must_change_pw: true, status: 'active'
-  });
-}
 
 function Student_delete(user, p) {
   Auth_require_(user, 'student.manage');
@@ -196,7 +175,7 @@ function Student_bulkImport(user, p) {
   var existingCodes = {}; DB_readAll(SHEETS.STUDENTS).forEach(function (s) { if (s.student_code) existingCodes[String(s.student_code).trim()] = true; });
   var existingUser = {}; DB_readAll(SHEETS.USERS).forEach(function (u) { existingUser[String(u.username).toLowerCase()] = true; });
 
-  var stRows = [], userRows = [], errors = [], created = 0, skipped = 0;
+  var stRows = [], errors = [], created = 0, skipped = 0;
   rows.forEach(function (r, i) {
     var line = Number(r.__line || (i + 1));
     var code = String(r.student_code || '').trim();
@@ -215,7 +194,6 @@ function Student_bulkImport(user, p) {
       class_id: classId, number: Number(r.number || 0), gender: gender, birthdate: r.birthdate || '',
       id_card: String(r.id_card || ''), blood_type: r.blood_type || '', address: r.address || '', phone: String(r.phone || ''),
       parent_name: r.parent_name || '', parent_relation: r.parent_relation || '', parent_phone: String(r.parent_phone || ''),
-      health_note: '', conduct_score: CONDUCT_BASE, status: 'active'
     });
     var uname = code.toLowerCase();
     if (!existingUser[uname]) {
@@ -299,13 +277,6 @@ function Profile_update(user, p) {
   ['full_name', 'email', 'phone', 'title'].forEach(function (k) { if (p[k] != null) data[k] = p[k]; });
   if (p.photo) data.photo_url = Files_uploadImage(p.photo, 'users', 'u-' + user.username).url;
   var saved = DB_update(SHEETS.USERS, user.id, data);
-  // ซิงก์รูป/ชื่อกลับไปที่ record นักเรียนด้วย ถ้าเป็นบทบาทนักเรียน
-  if (user.role === 'student' && user.student_id) {
-    var sp = {};
-    if (data.photo_url) sp.photo_url = data.photo_url;
-    if (data.phone) sp.phone = data.phone;
-    if (Object.keys(sp).length) DB_update(SHEETS.STUDENTS, user.student_id, sp);
-  }
   Audit_log(user, 'update', 'profile', user.id, '');
   return Auth_publicUser_(saved);
 }
