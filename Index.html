@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════
+ CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
+ File:        Index.html — Shell หลัก · inline boot state · skeleton แรกเข้า
+ Version:     1.0.0
+ Last Update: 2026-05-30
+ Developer:   ครูวิรัตน์  หาดคำ · www.kruwirat.com
+ License:     Proprietary · © 2026
+═══════════════════════════════════════════════════════════════
+-->
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <title>ระบบงานธุรการชั้นเรียน</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <?!= include('Styles'); ?>
+</head>
+<body>
+  <!-- ★ Inline boot state — Pattern 2: client อ่านจาก DOM (ไม่ fetch รอบแรก) -->
+  <script id="boot-data" type="application/json"><?!= jsonInline(bootData); ?></script>
+  <script id="webapp-url" type="text/plain"><?= webAppUrl ?></script>
+
+  <!-- App root: เริ่มด้วย splash skeleton (ไม่ปล่อยจอว่าง) -->
+  <div id="app-root">
+    <div class="splash">
+      <div class="splash-logo"><i class="bi bi-mortarboard-fill"></i></div>
+      <div class="splash-title">ระบบงานธุรการชั้นเรียน</div>
+      <div class="quantum-spinner"><span></span><span></span><span></span></div>
+      <div class="splash-sub">กำลังเตรียมระบบ…</div>
+    </div>
+  </div>
+
+  <!-- Global overlays -->
+  <div id="spinner-overlay" class="spinner-overlay" aria-hidden="true">
+    <div class="quantum-spinner lg"><span></span><span></span><span></span></div>
+    <div id="spinner-text" class="spinner-text">กำลังดำเนินการ…</div>
+  </div>
+  <div id="toast-host" class="toast-host"></div>
+  <div id="modal-host"></div>
+  <div id="lightbox" class="lightbox" aria-hidden="true"><img id="lightbox-img" src="" alt=""></div>
+
+  <!-- ScriptsPages: holder script (type ที่ไม่ execute) สำหรับ lazy-load หลัง login -->
+  <?!= include('ScriptsPages'); ?>
+
+  <!-- Core SPA -->
+  <?!= include('ScriptsCore'); ?>
+</body>
+</html>
