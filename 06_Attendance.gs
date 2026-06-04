@@ -114,7 +114,6 @@ function Att_summary(user, p) {
 // ประวัติการมาเรียนรายคน (สำหรับ student self + รายงานรายบุคคล)
 function Att_history(user, p) {
   var sid = p.student_id;
-  if (user.role === 'student') sid = user.student_id;
   if (!sid) throw new Error('ไม่พบนักเรียน');
   var rows = DB_readAll(SHEETS.ATTENDANCE).filter(function (a) { return a.student_id === sid; });
   rows.sort(function (a, b) { return b.date.localeCompare(a.date); });
