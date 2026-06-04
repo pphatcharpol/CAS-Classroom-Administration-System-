@@ -9,8 +9,6 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var FUND_METHODS = { cash: 'เงินสด', transfer: 'โอนเงิน', other: 'อื่น ๆ' };
-var FUND_CATS = { activity: 'ค่ากิจกรรม', material: 'ค่าอุปกรณ์/เอกสาร', trip: 'ทัศนศึกษา', fund: 'กองทุนห้อง', other: 'อื่น ๆ' };
 // กิจกรรมพัฒนาผู้เรียน (หลักสูตรแกนกลาง 2551)
 var ACTIVITY_TYPES = [
   { key: 'guidance', label: 'กิจกรรมแนะแนว', icon: 'compass' },
@@ -27,149 +25,9 @@ var EVENT_TYPES = {
 };
 
 function Extra_meta() {
-  return { fund_methods: FUND_METHODS, fund_cats: FUND_CATS, activity_types: ACTIVITY_TYPES, event_types: EVENT_TYPES };
+  return {activity_types: ACTIVITY_TYPES, event_types: EVENT_TYPES };
 }
 
-/* ════════ เงินกิจกรรม / กองทุนห้อง ══════════════════════════════ */
-function FundItem_list(user, p) {
-  Auth_require_(user, 'fund.view');
-  p = p || {};
-  var scope = Auth_classScope_(user);
-  var classIdx = DB_index(SHEETS.CLASSES);
-  // นับนักเรียน active ต่อห้อง
-  var sizeByClass = {};
-  DB_readAll(SHEETS.STUDENTS).forEach(function (s) { if (s.status === 'active') sizeByClass[s.class_id] = (sizeByClass[s.class_id] || 0) + 1; });
-  // payments รวมต่อ item
-  var payAgg = {};
-  DB_readAll(SHEETS.FUND_PAY).forEach(function (pm) {
-    if (String(pm.paid) === 'true' || pm.paid === true) {
-      var a = payAgg[pm.item_id] || (payAgg[pm.item_id] = { count: 0, collected: 0 });
-      a.count++; a.collected += Number(pm.paid_amount || 0);
-    }
-  });
-  var rows = DB_readAll(SHEETS.FUND_ITEMS).filter(function (it) {
-    if (it.status === 'deleted') return false;
-    if (p.class_id) return it.class_id === p.class_id;
-    if (scope) return scope.indexOf(it.class_id) >= 0;
-    return true;
-  });
-  if (p.year) rows = rows.filter(function (it) { return String(it.academic_year) === String(p.year); });
-  rows.sort(function (a, b) { return (b.created_at || '').localeCompare(a.created_at || ''); });
-  return {
-    items: rows.map(function (it) {
-      var c = classIdx[it.class_id]; var size = sizeByClass[it.class_id] || 0;
-      var agg = payAgg[it.id] || { count: 0, collected: 0 };
-      return Object.assign({}, it, {
-        amount: Number(it.amount), class_label: c ? (c.level + '/' + c.room) : '-',
-        cat_label: FUND_CATS[it.category] || it.category, class_size: size,
-        paid_count: agg.count, collected: agg.collected,
-        expected: Number(it.amount) * size, outstanding_count: Math.max(0, size - agg.count)
-      });
-    })
-  };
-}
-
-function FundItem_save(user, p) {
-  Auth_require_(user, 'fund.manage');
-  var data = {
-    class_id: p.class_id, academic_year: p.academic_year || cfg_academicYear_(), term: p.term || '1',
-    title: String(p.title || '').trim(), amount: Number(p.amount || 0),
-    due_date: p.due_date || '', category: p.category || 'activity', note: p.note || '',
-    status: p.status || 'active'
-  };
-  if (!data.class_id) throw new Error('กรุณาเลือกชั้นเรียน');
-  if (!data.title) throw new Error('กรุณาระบุชื่อรายการ');
-  var saved;
-  if (p.id) { saved = DB_update(SHEETS.FUND_ITEMS, p.id, data); Audit_log(user, 'update', 'fund_item', p.id, data.title); }
-  else { data.created_by = user.id; saved = DB_insert(SHEETS.FUND_ITEMS, data); Audit_log(user, 'create', 'fund_item', saved.id, data.title + ' ' + data.amount); }
-  return saved;
-}
-
-function FundItem_delete(user, p) {
-  Auth_require_(user, 'fund.manage');
-  DB_softDelete(SHEETS.FUND_ITEMS, p.id);
-  Audit_log(user, 'delete', 'fund_item', p.id, '');
-  return true;
-}
-
-// รายการเก็บเงิน + สถานะชำระรายคน (สำหรับ mark จ่าย)
-function Fund_itemDetail(user, p) {
-  Auth_require_(user, 'fund.view');
-  var it = DB_get(SHEETS.FUND_ITEMS, p.item_id);
-  if (!it) throw new Error('ไม่พบรายการ');
-  var classIdx = DB_index(SHEETS.CLASSES);
-  var students = DB_readAll(SHEETS.STUDENTS).filter(function (s) { return s.class_id === it.class_id && s.status === 'active'; })
-    .map(function (s) { return Student_enrich_(s, classIdx); })
-    .sort(function (a, b) { return (Number(a.number) || 999) - (Number(b.number) || 999); });
-  var payByStudent = {};
-  DB_readAll(SHEETS.FUND_PAY).forEach(function (pm) { if (pm.item_id === p.item_id) payByStudent[pm.student_id] = pm; });
-  return {
-    item: Object.assign({}, it, { amount: Number(it.amount), class_label: classIdx[it.class_id] ? (classIdx[it.class_id].level + '/' + classIdx[it.class_id].room) : '' }),
-    students: students.map(function (s) {
-      var pm = payByStudent[s.id];
-      return { student_id: s.id, number: s.number, full_name: s.full_name, photo_url: s.photo_url, paid: pm ? (String(pm.paid) === 'true' || pm.paid === true) : false, paid_amount: pm ? Number(pm.paid_amount) : Number(it.amount), receipt_no: pm ? pm.receipt_no : '', pay_id: pm ? pm.id : '' };
-    })
-  };
-}
-
-function Fund_payBulk(user, p) {
-  Auth_require_(user, 'fund.manage');
-  var it = DB_get(SHEETS.FUND_ITEMS, p.item_id);
-  if (!it) throw new Error('ไม่พบรายการ');
-  var existing = {};
-  DB_readAll(SHEETS.FUND_PAY).forEach(function (pm) { if (pm.item_id === p.item_id) existing[pm.student_id] = pm; });
-  var now = cfg_now_(), seq = 1, toInsert = [], updated = 0;
-  (p.records || []).forEach(function (r) {
-    var paid = r.paid === true || r.paid === 'true';
-    var amt = paid ? (r.paid_amount != null ? Number(r.paid_amount) : Number(it.amount)) : 0;
-    var ex = existing[r.student_id];
-    if (ex) {
-      var exPaid = (String(ex.paid) === 'true' || ex.paid === true);
-      if (exPaid !== paid || Number(ex.paid_amount || 0) !== amt) {
-        DB_update(SHEETS.FUND_PAY, ex.id, { paid: paid, paid_amount: amt, paid_date: paid ? cfg_dateOnly_(new Date()) : '', method: r.method || ex.method || 'cash', recorded_by: user.id });
-        updated++;
-      }
-    } else if (paid) {
-      toInsert.push({ item_id: p.item_id, student_id: r.student_id, class_id: it.class_id, paid: true, paid_amount: amt, paid_date: cfg_dateOnly_(new Date()), method: r.method || 'cash', receipt_no: 'RC' + Utilities.formatDate(new Date(), APP.TIMEZONE, 'yyMMdd') + '-' + (seq++), note: '', recorded_by: user.id });
-    }
-  });
-  if (toInsert.length) DB_bulkInsert(SHEETS.FUND_PAY, toInsert);
-  Audit_log(user, 'fund_pay', 'fund_item', p.item_id, it.title + ' (+' + toInsert.length + '/~' + updated + ')');
-  return { inserted: toInsert.length, updated: updated };
-}
-
-// รายการที่นักเรียนต้องชำระ (self)
-function Fund_studentDues(user, p) {
-  var sid = p.student_id;
-  if (user.role === 'student') sid = user.student_id;
-  else Auth_require_(user, 'fund.view');
-  var s = DB_get(SHEETS.STUDENTS, sid);
-  if (!s) throw new Error('ไม่พบนักเรียน');
-  var payByItem = {};
-  DB_readAll(SHEETS.FUND_PAY).forEach(function (pm) { if (pm.student_id === sid) payByItem[pm.item_id] = pm; });
-  var items = DB_readAll(SHEETS.FUND_ITEMS).filter(function (it) { return it.class_id === s.class_id && it.status !== 'deleted'; });
-  items.sort(function (a, b) { return (b.created_at || '').localeCompare(a.created_at || ''); });
-  var totalDue = 0, totalPaid = 0;
-  var list = items.map(function (it) {
-    var pm = payByItem[it.id]; var paid = pm ? (String(pm.paid) === 'true' || pm.paid === true) : false;
-    totalDue += Number(it.amount); if (paid) totalPaid += Number(pm.paid_amount || it.amount);
-    return Object.assign({}, it, { amount: Number(it.amount), cat_label: FUND_CATS[it.category] || it.category, paid: paid, paid_date: pm ? pm.paid_date : '', receipt_no: pm ? pm.receipt_no : '' });
-  });
-  return { student: Student_enrich_(s, DB_index(SHEETS.CLASSES)), items: list, totalDue: totalDue, totalPaid: totalPaid, outstanding: totalDue - totalPaid };
-}
-
-function Fund_overview(user, p) {
-  Auth_require_(user, 'fund.view');
-  var scope = Auth_classScope_(user);
-  var sizeByClass = {};
-  DB_readAll(SHEETS.STUDENTS).forEach(function (s) { if (s.status === 'active') sizeByClass[s.class_id] = (sizeByClass[s.class_id] || 0) + 1; });
-  var items = DB_readAll(SHEETS.FUND_ITEMS).filter(function (it) { if (it.status === 'deleted') return false; if (scope) return scope.indexOf(it.class_id) >= 0; return true; });
-  var itemIds = {}; items.forEach(function (it) { itemIds[it.id] = it; });
-  var expected = 0; items.forEach(function (it) { expected += Number(it.amount) * (sizeByClass[it.class_id] || 0); });
-  var collected = 0, paidCount = 0;
-  DB_readAll(SHEETS.FUND_PAY).forEach(function (pm) { if (itemIds[pm.item_id] && (String(pm.paid) === 'true' || pm.paid === true)) { collected += Number(pm.paid_amount || 0); paidCount++; } });
-  return { items: items.length, expected: expected, collected: collected, outstanding: Math.max(0, expected - collected), paid_count: paidCount };
-}
 
 /* ════════ กิจกรรมพัฒนาผู้เรียน / จิตอาสา ════════════════════════ */
 function Act_list(user, p) {
