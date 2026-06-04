@@ -33,7 +33,7 @@ function Auth_publicUser_(u) {
   return {
     id: u.id, username: u.username, role: u.role, full_name: u.full_name,
     photo_url: u.photo_url, email: u.email, phone: u.phone, title: u.title,
-    student_id: u.student_id, class_id: u.class_id,
+    class_id: u.class_id,
     must_change_pw: String(u.must_change_pw) === 'true' || u.must_change_pw === true,
     role_label: ROLE_LABEL[u.role] || u.role
   };
@@ -114,8 +114,6 @@ function Auth_classScope_(user) {
     });
     return classes.map(function (c) { return c.id; });
   }
-  if (user.role === 'teacher') return null; // ครูผู้สอนดูได้ทุกห้อง (อ่าน) — บันทึกได้
-  return []; // student
 }
 
 /* ── Change password / profile ──────────────────────────────────── */
