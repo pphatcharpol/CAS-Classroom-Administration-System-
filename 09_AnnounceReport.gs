@@ -11,7 +11,7 @@
 
 var ANNOUNCE_CATS = {
   general: 'ทั่วไป', academic: 'วิชาการ', activity: 'กิจกรรม',
-  urgent: 'ด่วน', health: 'สุขภาพ', exam: 'สอบ'
+  urgent: 'ด่วน', exam: 'สอบ'
 };
 
 /* ════════ ANNOUNCEMENTS (ประกาศ) ════════════════════════════════ */
@@ -100,13 +100,12 @@ function Report_overview(user, p) {
   students.forEach(function (s) {
     var c = classIdx[s.class_id];
     var key = c ? (c.level + '/' + c.room) : 'ไม่ระบุ';
-    if (!byClass[key]) byClass[key] = { label: key, male: 0, female: 0, total: 0, conduct: 0 };
+    if (!byClass[key]) byClass[key] = { label: key, male: 0, female: 0, total: 0 };
     byClass[key].total++;
     if (s.gender === 'male') byClass[key].male++; else if (s.gender === 'female') byClass[key].female++;
-    byClass[key].conduct += (s.conduct_score === '' ? CONDUCT_BASE : Number(s.conduct_score));
   });
   var classRows = Object.keys(byClass).map(function (k) {
-    var r = byClass[k]; r.avg_conduct = r.total ? Math.round((r.conduct / r.total) * 10) / 10 : 0; return r;
+    var r = byClass[k]; return r;
   }).sort(function (a, b) { return a.label.localeCompare(b.label, 'th'); });
 
   var male = students.filter(function (s) { return s.gender === 'male'; }).length;
@@ -116,9 +115,7 @@ function Report_overview(user, p) {
     totalStudents: students.length, male: male, female: female,
     totalClasses: classRows.length, byClass: classRows,
     attendance: Att_summary(user, { from: p.from, to: p.to, class_id: p.class_id }),
-    conduct: Conduct_overview(user, { class_id: p.class_id }),
     visit: Visit_overview(user, {}),
-    health: Health_overview(user, {})
   };
 }
 
