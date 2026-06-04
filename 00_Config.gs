@@ -41,23 +41,10 @@ var SHEETS = {
   CLASSES:    'Classes',
   STUDENTS:   'Students',
   ATTENDANCE: 'Attendance',
-  CONDUCT:    'Conduct',
   HOMEVISIT:  'HomeVisits',
-  HEALTH:     'HealthRecords',
   ANNOUNCE:   'Announcements',
-  SAVINGS:    'Savings',
   SDQ:        'SdqAssessments',
-  SCREENING:  'Screenings',
-  LEAVE:      'LeaveRequests',
-  SUBJECTS:   'Subjects',
-  GRADES:     'Grades',
-  EVALS:      'LearnerEvals',
-  DUTY:       'Duties',
-  COMMITTEE:  'Committee',
-  SEATING:    'Seating',
   TIMETABLE:  'Timetable',
-  FUND_ITEMS: 'FundItems',
-  FUND_PAY:   'FundPayments',
   ACTIVITY:   'ActivityLogs',
   EVENTS:     'Events',
   AUDIT:      'AuditLog',
@@ -83,16 +70,13 @@ var SCHEMAS = {
     'id','student_code','title','first_name','last_name','nickname','class_id',
     'number','gender','birthdate','id_card','blood_type','address','phone',
     'parent_name','parent_relation','parent_phone','photo_url','health_note',
-    'conduct_score','status','created_at','updated_at'
+    'status','created_at','updated_at'
   ],
   Attendance: [
     'id','date','class_id','student_id','status','check_in','note',
     'recorded_by','source','created_at','updated_at'
   ],
-  Conduct: [
-    'id','date','student_id','class_id','type','points','category','reason',
-    'evidence_url','recorded_by','created_at'
-  ],
+
   HomeVisits: [
     'id','student_id','class_id','visit_date','address','gps_lat','gps_lng',
     'photo_url','family_status','economic_status','risk_level','findings',
@@ -104,67 +88,22 @@ var SCHEMAS = {
     'members_json','survey_json','travel_json','addr_json','photos_json',
     'consent','cct_request'
   ],
-  HealthRecords: [
-    'id','student_id','class_id','record_date','term','weight','height','bmi',
-    'bmi_level','vision_l','vision_r','blood_pressure','note','recorded_by','created_at'
-  ],
+
   Announcements: [
     'id','title','body','category','target_role','target_class','pinned',
     'cover_url','author_id','publish_at','status','views','created_at','updated_at'
   ],
-  Savings: [
-    'id','tx_date','student_id','class_id','type','amount','balance',
-    'note','ref_no','recorded_by','created_at'
-  ],
+
   SdqAssessments: [
     'id','student_id','class_id','assess_date','term','rater',
     'e_score','c_score','h_score','p_score','pro_score','total',
     'band_e','band_c','band_h','band_p','band_pro','band_total','overall',
     'answers','note','assessed_by','created_at'
   ],
-  Screenings: [
-    'id','student_id','class_id','term','screen_date','learning','health',
-    'economic','family','behavior','protection','group','special_type',
-    'summary','help_action','helped','screened_by','created_at','updated_at'
-  ],
-  LeaveRequests: [
-    'id','student_id','class_id','leave_type','date_from','date_to','days',
-    'reason','attachment_url','status','review_note','requested_by',
-    'reviewed_by','created_at','updated_at'
-  ],
-  Subjects: [
-    'id','code','name','learning_area','credit','type','level',
-    'academic_year','term','teacher_id','status','created_at','updated_at'
-  ],
-  Grades: [
-    'id','student_id','class_id','subject_id','academic_year','term',
-    'score','grade','credit','recorded_by','created_at','updated_at'
-  ],
-  LearnerEvals: [
-    'id','student_id','class_id','academic_year','term',
-    'dq1','dq2','dq3','dq4','dq5','dq6','dq7','dq8',
-    'reading','activity','comment','evaluated_by','created_at','updated_at'
-  ],
-  Duties: [
-    'id','class_id','academic_year','term','weekday','student_id','task','recorded_by','created_at'
-  ],
-  Committee: [
-    'id','class_id','academic_year','student_id','position','position_order','note','recorded_by','created_at'
-  ],
-  Seating: [
-    'id','class_id','academic_year','rows','cols','seats','updated_by','created_at','updated_at'
-  ],
+
   Timetable: [
     'id','class_id','academic_year','term','weekday','period','subject_id',
     'subject_text','teacher_text','room','recorded_by','created_at'
-  ],
-  FundItems: [
-    'id','class_id','academic_year','term','title','amount','due_date',
-    'category','note','created_by','status','created_at','updated_at'
-  ],
-  FundPayments: [
-    'id','item_id','student_id','class_id','paid','paid_amount','paid_date',
-    'method','receipt_no','note','recorded_by','created_at','updated_at'
   ],
   ActivityLogs: [
     'id','student_id','class_id','academic_year','activity_type','title','hours',
@@ -188,20 +127,18 @@ var SCHEMAS = {
  *  RBAC — บทบาท · ป้ายกำกับ · ความสามารถ (capabilities)
  *  capability = action string ที่ API ตรวจก่อนทำงานทุกครั้ง
  *  ─────────────────────────────────────────────────────────────── */
-var ROLES = ['admin', 'homeroom', 'teacher', 'student'];
+var ROLES = ['admin', 'homeroom', 'teacher'];
 
 var ROLE_LABEL = {
   admin:    'ผู้ดูแลระบบ',
   homeroom: 'ครูประจำชั้น',
   teacher:  'ครูผู้สอน',
-  student:  'นักเรียน'
 };
 
 var ROLE_ICON = {
   admin:    'shield-lock-fill',
   homeroom: 'person-badge-fill',
   teacher:  'easel2-fill',
-  student:  'mortarboard-fill'
 };
 
 // ความสามารถระดับโมดูล — '*' = ทุกสิทธิ์ (admin)
@@ -211,15 +148,9 @@ var CAPS = {
     'student.view','student.manage',
     'class.view','class.manage_own',
     'attendance.view','attendance.record',
-    'conduct.view','conduct.record',
     'visit.view','visit.record',
-    'health.view','health.record',
-    'savings.view','savings.manage',
-    'care.view','care.manage',
-    'leave.view','leave.approve',
-    'grade.view','grade.manage','eval.manage','subject.manage',
     'classroom.view','classroom.manage',
-    'fund.view','fund.manage','activity.view','activity.manage','event.view','event.manage',
+    'activity.view','activity.manage','event.view','event.manage',
     'announce.view','announce.manage',
     'report.view','report.class',
     'user.view_class','profile.edit'
@@ -227,22 +158,11 @@ var CAPS = {
   teacher: [
     'student.view','class.view',
     'attendance.view','attendance.record',
-    'conduct.view','conduct.record',
-    'health.view',
-    'savings.view','savings.manage',
-    'care.view',
-    'leave.view',
-    'grade.view','grade.manage','subject.manage',
     'classroom.view',
-    'fund.view','activity.view','activity.manage','event.view',
+    'activity.view','activity.manage','event.view',
     'announce.view',
     'report.view',
     'profile.edit'
-  ],
-  student: [
-    'self.view','self.attendance','self.conduct','self.health','self.savings','self.leave','self.grade','self.classroom',
-    'self.fund','self.activity','event.view',
-    'announce.view','profile.edit'
   ]
 };
 
@@ -261,8 +181,6 @@ var ATT_STATUS = {
   absent:  { label: 'ขาดเรียน', icon: 'x-circle-fill',     color: '#C62828' },
   activity:{ label: 'กิจกรรม',  icon: 'flag',              color: '#00838F' }
 };
-
-var CONDUCT_BASE = 100; // คะแนนความประพฤติเริ่มต้นของนักเรียนทุกคน
 
 /** ───────────────────────────────────────────────────────────────
  *  Spreadsheet & helpers — ใช้ Active Spreadsheet (ไม่ผูก ID)
@@ -330,22 +248,4 @@ var GRADE_BAND_LABEL = {
   'upper-secondary': 'มัธยมศึกษาตอนปลาย',
   'secondary': 'มัธยมศึกษา',
   'other': 'อื่น ๆ'
-};
-
-// คำนวณ BMI + ระดับ (เกณฑ์อย่างง่ายสำหรับโรงเรียน)
-function cfg_bmi_(weightKg, heightCm) {
-  var w = Number(weightKg), h = Number(heightCm) / 100;
-  if (!w || !h) return { bmi: '', level: '' };
-  var bmi = w / (h * h);
-  var level = 'normal';
-  if (bmi < 18.5) level = 'underweight';
-  else if (bmi < 23) level = 'normal';
-  else if (bmi < 25) level = 'overweight';
-  else level = 'obese';
-  return { bmi: Math.round(bmi * 10) / 10, level: level };
-}
-
-var BMI_LABEL = {
-  underweight: 'น้ำหนักน้อย', normal: 'สมส่วน',
-  overweight: 'ท้วม', obese: 'อ้วน'
 };
