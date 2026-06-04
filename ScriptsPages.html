@@ -27,18 +27,8 @@
     return '<div class="stat-mini"><div class="ic" style="background:'+bg+';color:'+color+'"><i class="bi bi-'+ic+'"></i></div><div><div class="v">'+v+'</div><div class="l">'+esc(l)+'</div></div></div>';
   }
   // การ์ดสรุปโมดูล (แดชบอร์ดครู) — สอดคล้องฟีเจอร์ล่าสุด
-  function careCard(care){
-    if(!care||!care.counts)return '';var c=care.counts;
-    return '<div class="card"><div class="card-h"><h3><i class="bi bi-diagram-3-fill"></i> ระบบดูแลช่วยเหลือนักเรียน</h3><button class="btn btn-sm btn-ghost" data-go="#/screening">คัดกรอง</button></div>'
-      +A.bars([{label:'ปกติ',value:c.normal||0,color:'#2E7D32'},{label:'เสี่ยง',value:c.risk||0,color:'#C9A227'},{label:'มีปัญหา',value:c.problem||0,color:'#C62828'},{label:'พิเศษ',value:c.special||0,color:'#6A1B9A'}])
-      +(c.unscreened?'<div class="muted mt" style="font-size:12.5px"><i class="bi bi-info-circle"></i> ยังไม่คัดกรอง '+c.unscreened+' คน · <span class="gold">แตะเพื่อคัดกรอง</span></div>':'<div class="muted mt" style="font-size:12.5px"><i class="bi bi-check-circle"></i> คัดกรองครบแล้ว</div>')+'</div>';
-  }
-  function savingsCard(sav){
-    if(!sav)return '';
-    return '<div class="card"><div class="card-h"><h3><i class="bi bi-piggy-bank-fill"></i> ออมเงินนักเรียน</h3><button class="btn btn-sm btn-ghost" data-go="#/savings">จัดการ</button></div>'
-      +'<div class="flex gap mb">'+statMini('wallet2','#8A6608','var(--warn-bg)',money(sav.balance),'ยอดคงเหลือรวม')+statMini('people-fill','#1565C0','var(--info-bg)',num(sav.savers),'นักเรียนที่ออม')+'</div>'
-      +((sav.recent||[]).slice(0,4).map(function(t){return '<div class="flex items-center gap" style="padding:6px 0;border-bottom:1px solid var(--cream-3)"><span class="badge '+(t.type==='deposit'?'b-ok':'b-danger')+'">'+(t.type==='deposit'?'+':'-')+money(t.amount)+'</span><div class="grow" style="font-size:13px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(t.student_name)+'</div><span class="muted" style="font-size:11.5px;white-space:nowrap">'+TH.date(t.tx_date)+'</span></div>';}).join('')||'<div class="muted center" style="padding:12px">ยังไม่มีรายการ</div>')+'</div>';
-  }
+
+
   function attBadge(st){var m=(Store.boot.att_status||{})[st];if(!m)return '<span class="badge b-muted">—</span>';
     var cls={present:'b-ok',late:'b-warn',leave:'b-info',sick:'b-purple',absent:'b-danger',activity:'b-info'}[st]||'b-muted';
     return '<span class="badge '+cls+'"><i class="bi bi-'+m.icon+'"></i> '+esc(m.label)+'</span>';}
@@ -56,23 +46,12 @@
   var QUICK_STAFF=[
     {h:'#/attendance',i:'calendar-check-fill',t:'เช็กชื่อ',cap:'attendance.record'},
     {h:'#/students',i:'people-fill',t:'นักเรียน',cap:'student.view'},
-    {h:'#/grades',i:'card-checklist',t:'บันทึกเกรด',cap:'grade.manage'},
-    {h:'#/savings',i:'piggy-bank-fill',t:'ออมเงิน',cap:'savings.view'},
-    {h:'#/leave',i:'calendar2-week-fill',t:'การลา',cap:'leave.view'},
-    {h:'#/documents',i:'file-earmark-text-fill',t:'เอกสาร ปพ.',cap:'grade.view'},
-    {h:'#/fund',i:'wallet-fill',t:'เงินกิจกรรม',cap:'fund.view'},
     {h:'#/activities',i:'heart-fill',t:'กิจกรรม',cap:'activity.view'},
     {h:'#/calendar',i:'calendar-event-fill',t:'ปฏิทิน',cap:'event.view'},
     {h:'#/announcements',i:'megaphone-fill',t:'ประกาศ',cap:'announce.view'},
     {h:'#/reports',i:'bar-chart-fill',t:'รายงาน',cap:'report.view'}
   ];
-  var QUICK_STUDENT=[
-    {h:'#/me-grades',i:'mortarboard-fill',t:'ผลการเรียน'},{h:'#/me-attendance',i:'calendar-check-fill',t:'การมาเรียน'},
-    {h:'#/me-savings',i:'piggy-bank-fill',t:'เงินออม'},{h:'#/me-fund',i:'wallet-fill',t:'เงินกิจกรรม'},
-    {h:'#/me-activities',i:'heart-fill',t:'ชั่วโมงกิจกรรม'},{h:'#/me-leave',i:'calendar2-x-fill',t:'ขอลา'},
-    {h:'#/me-classroom',i:'easel2-fill',t:'ห้องเรียน'},{h:'#/calendar',i:'calendar-event-fill',t:'ปฏิทิน'},
-    {h:'#/announcements',i:'megaphone-fill',t:'ประกาศ'}
-  ];
+
   function quickGrid(){
     var list=Store.user.role==='student'?QUICK_STUDENT:QUICK_STAFF.filter(function(q){return !q.cap||can(q.cap);});
     return '<div class="quick-grid">'+list.map(function(q){return '<a class="quick-btn" href="'+q.h+'"><div class="qic"><i class="bi bi-'+q.i+'"></i></div><span>'+esc(q.t)+'</span></a>';}).join('')+'</div>';
@@ -89,7 +68,6 @@
   }
   function staffMissions(d){
     var m=[];
-    if(d.leave_pending)m.push({type:'warn',icon:'calendar2-week-fill',title:'คำขอลา '+d.leave_pending+' รายการรออนุมัติ',sub:'แตะเพื่อตรวจสอบและอนุมัติ',h:'#/leave'});
     var risk=(d.care&&d.care.counts)?((d.care.counts.risk||0)+(d.care.counts.problem||0)):0;
     if(risk)m.push({type:'danger',icon:'diagram-3-fill',title:'นักเรียนกลุ่มเสี่ยง/มีปัญหา '+risk+' คน',sub:'ติดตามดูแลช่วยเหลือ',h:'#/screening'});
     var con=(d.conduct&&d.conduct.atRisk)?d.conduct.atRisk.length:0;
@@ -154,8 +132,8 @@
       +'<div class="card"><div class="card-h"><h3><i class="bi bi-graph-up-arrow"></i> แนวโน้มการมาเรียน (14 วัน)</h3></div>'+(trend.length?A.bars(trend):A.empty('calendar-x','ยังไม่มีข้อมูล','เริ่มเช็กชื่อเพื่อดูแนวโน้ม'))+'</div>'
       +'<div class="card"><div class="card-h"><h3><i class="bi bi-pie-chart-fill"></i> สัดส่วนการมาเรียน</h3></div><div class="flex items-center gap" style="gap:18px"><div>'+A.donut(attSegs,150)+'</div><div class="legend grow">'+attSegs.map(function(s){return '<div class="lg-row"><span class="dot" style="background:'+s.color+'"></span>'+esc(s.label)+'<span class="lg-v">'+num(s.value)+'</span></div>';}).join('')+'</div></div></div>'
     +'</div>'
-    +((d.care&&d.care.counts)||d.savings?'<div class="grid stagger" style="grid-template-columns:1fr 1fr;align-items:start;margin-bottom:16px">'+careCard(d.care)+savingsCard(d.savings)+'</div>':'')
-    +((d.events&&d.events.length)||d.fund?'<div class="grid stagger" style="grid-template-columns:1fr 1fr;align-items:start;margin-bottom:16px">'+eventsCard(d.events)+fundCard(d.fund)+'</div>':'')
+    +((d.care&&d.care.counts)||d.savings?'<div class="grid stagger" style="grid-template-columns:1fr 1fr;align-items:start;margin-bottom:16px">'+'</div>':'')
+    +((d.events&&d.events.length)||d.fund?'<div class="grid stagger" style="grid-template-columns:1fr 1fr;align-items:start;margin-bottom:16px">'+eventsCard(d.events)+'</div>':'')
     +'<div class="grid stagger" style="grid-template-columns:1fr 1fr;align-items:start;margin-bottom:16px">'
       +'<div class="card"><div class="card-h"><h3><i class="bi bi-shield-exclamation"></i> ความประพฤติกลุ่มเสี่ยง</h3>'+(con.atRisk&&con.atRisk.length?'<span class="badge b-danger">'+con.atRisk.length+' คน</span>':'')+'</div>'
         +'<div class="flex gap" style="margin-bottom:10px">'+statMini('emoji-smile','#2E7D32','var(--ok-bg)',num(conBands.excellent||0),'ดีเยี่ยม')+statMini('emoji-neutral','#C9A227','var(--warn-bg)',num((conBands.watch||0)),'เฝ้าระวัง')+'</div>'+riskHtml+'</div>'
@@ -164,39 +142,6 @@
     +'<div class="card"><div class="card-h"><h3><i class="bi bi-grid-3x3-gap-fill"></i> ชั้นเรียน</h3><button class="btn btn-sm btn-ghost" data-go="#/students">ดูนักเรียน</button></div><div class="cards">'
       +(d.classes||[]).map(function(c){return '<div class="card hover" data-go="#/students?class='+c.id+'" style="padding:15px;border-left:4px solid '+(c.color||'#C9A227')+'"><div class="flex between items-center"><b style="font-family:var(--font);font-size:17px">'+esc(c.level+'/'+c.room)+'</b><span class="badge b-gold">'+c.student_count+' คน</span></div><div class="muted" style="font-size:12.5px;margin-top:6px"><i class="bi bi-person-badge"></i> '+esc(c.homeroom_name)+'</div></div>';}).join('')
     +'</div></div>';
-  }
-
-  function renderStudentDash(d){
-    var s=d.student||{};var p=s.profile||{};var u=Store.user;
-    var att=s.attendance||{};var total=s.attendance_total||0;
-    var attSegs=[
-      {label:'มาเรียน',color:'#2E7D32',value:att.present||0},{label:'มาสาย',color:'#C9A227',value:att.late||0},
-      {label:'ลากิจ',color:'#1565C0',value:att.leave||0},{label:'ลาป่วย',color:'#6A1B9A',value:att.sick||0},{label:'ขาดเรียน',color:'#C62828',value:att.absent||0}
-    ];
-    var recentCon=(s.recent_conduct||[]).map(function(c){
-      return '<div class="flex items-center gap" style="padding:9px 0;border-bottom:1px solid var(--cream-3)"><span class="badge '+(c.type==='add'?'b-ok':'b-danger')+'">'+(c.type==='add'?'+':'-')+c.points+'</span><div class="grow"><b style="font-family:var(--font);font-size:13.5px">'+esc(c.reason)+'</b><div class="muted" style="font-size:11.5px">'+TH.date(c.date)+'</div></div></div>';
-    }).join('')||'<div class="muted center" style="padding:16px">ยังไม่มีรายการ</div>';
-
-    var sMis=[];
-    if(s.conduct_score<60)sMis.push({type:'danger',icon:'shield-exclamation',title:'คะแนนความประพฤติ '+s.conduct_score+'/100',sub:'ควรปรับปรุงพฤติกรรม',h:'#/me-conduct'});
-    if(s.present_rate<80)sMis.push({type:'warn',icon:'calendar-x',title:'อัตราการมาเรียน '+s.present_rate+'%',sub:'ควรมาเรียนให้สม่ำเสมอ',h:'#/me-attendance'});
-    if(!sMis.length)sMis.push({type:'ok',icon:'emoji-smile-fill',title:'เยี่ยมมาก! ผลการเรียนและพฤติกรรมอยู่ในเกณฑ์ดี',sub:'รักษาความตั้งใจนี้ไว้นะ',h:'#/me-grades'});
-    page().innerHTML=hero({pill:greeting()+' · '+u.full_name,pill_icon:'emoji-smile-fill',title:'ข้อมูลของฉัน',sub:(p.class_label?'ชั้น '+p.class_label+' · เลขที่ '+p.number:'')+' · รหัส '+(p.student_code||''),deco:'person-circle',kpis:[
-      {icon:'mortarboard-fill',value:(s.gpa!=null?Number(s.gpa).toFixed(2):'-'),label:'เกรดเฉลี่ยสะสม',sub:(s.subj_count?s.subj_count+' รายวิชา':'')},
-      {icon:'calendar-check-fill',value:s.present_rate+'%',label:'อัตรามาเรียน'},
-      {icon:'award-fill',value:s.conduct_score,label:'คะแนนความประพฤติ'},
-      {icon:'piggy-bank-fill',value:money((s.savings||{}).balance||0),label:'เงินออม (บาท)'}
-    ].concat((s.fund&&s.fund.outstanding)?[{icon:'wallet-fill',value:money(s.fund.outstanding),label:'เงินกิจกรรมค้างชำระ'}]:[]).concat(s.activity_hours?[{icon:'heart-fill',value:num(s.activity_hours),label:'ชั่วโมงกิจกรรม'}]:[])})
-    +missionCards(sMis)
-    +'<div class="card mb"><div class="card-h"><h3><i class="bi bi-grid-1x2-fill"></i> เมนูของฉัน</h3></div>'+quickGrid()+'</div>'
-    +'<div class="grid stagger" style="grid-template-columns:1fr 1fr;align-items:start;margin-bottom:16px">'
-      +'<div class="card"><div class="card-h"><h3><i class="bi bi-pie-chart-fill"></i> สรุปการมาเรียน</h3><button class="btn btn-sm btn-ghost" data-go="#/me-attendance">ดูทั้งหมด</button></div><div class="flex items-center gap" style="gap:18px"><div>'+A.donut(attSegs,150)+'</div><div class="legend grow">'+attSegs.map(function(x){return '<div class="lg-row"><span class="dot" style="background:'+x.color+'"></span>'+esc(x.label)+'<span class="lg-v">'+x.value+'</span></div>';}).join('')+'</div></div></div>'
-      +'<div class="card"><div class="card-h"><h3><i class="bi bi-award-fill"></i> ความประพฤติล่าสุด</h3><button class="btn btn-sm btn-ghost" data-go="#/me-conduct">ดูทั้งหมด</button></div>'+recentCon+'</div>'
-    +'</div>'
-    +'<div class="grid stagger" style="grid-template-columns:1fr 1fr;align-items:start;margin-bottom:16px">'
-      +eventsCard(d.events)
-      +'<div class="card"><div class="card-h"><h3><i class="bi bi-megaphone-fill"></i> ประกาศ</h3><button class="btn btn-sm btn-ghost" data-go="#/announcements">ทั้งหมด</button></div>'+((d.announcements||[]).map(annRow).join('')||'<div class="muted center" style="padding:18px">ยังไม่มีประกาศ</div>')+'</div>'
-    +'</div>';
   }
 
   /* ════════════════ STUDENTS ════════════════════════════════ */
@@ -1765,13 +1710,7 @@
   function eventsCard(events){
     return '<div class="card"><div class="card-h"><h3><i class="bi bi-calendar-event-fill"></i> กิจกรรมที่จะถึง</h3><button class="btn btn-sm btn-ghost" data-go="#/calendar">ทั้งหมด</button></div>'+((events&&events.length)?events.map(eventRow).join(''):A.empty('calendar','ยังไม่มีกิจกรรมเร็ว ๆ นี้',''))+'</div>';
   }
-  function fundCard(fund){
-    if(!fund)return '';
-    var pct=fund.expected?Math.round(fund.collected/fund.expected*100):0;
-    return '<div class="card"><div class="card-h"><h3><i class="bi bi-wallet-fill"></i> เงินกิจกรรม/กองทุนห้อง</h3><button class="btn btn-sm btn-ghost" data-go="#/fund">จัดการ</button></div>'
-      +'<div class="flex gap mb">'+statMini('cash-stack','#2E7D32','var(--ok-bg)',money(fund.collected),'เก็บได้แล้ว')+statMini('exclamation-circle','#C62828','var(--danger-bg)',money(fund.outstanding),'ยังขาด')+'</div>'
-      +'<div class="sd-progress"><span style="width:'+pct+'%"></span></div><div class="muted mt" style="font-size:12px">'+num(fund.items)+' รายการ · เป้าหมาย '+money(fund.expected)+' บาท ('+pct+'%)</div></div>';
-  }
+
 
   /* ── เงินกิจกรรม ── */
   var fundState={class_id:''};
