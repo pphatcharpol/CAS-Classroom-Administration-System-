@@ -4,7 +4,7 @@
  File:        ScriptsCore.html — TH module · A framework · Auth · Shell · Router (eager)
  Version:     1.0.0
  Last Update: 2026-05-30
- Developer:   ครูวิรัตน์  หาดคำ · www.kruwirat.com
+ Developer:   ครูที
  License:     Proprietary · © 2026
 ═══════════════════════════════════════════════════════════════
 -->
@@ -327,11 +327,10 @@ function doLogout(silent){
 /* ════════ Login screen ═══════════════════════════════════════════ */
 function renderLogin(){
   var b=Store.boot||{};var app=b.app||{};var dev=b.dev||{};
-  var demos=[
+  var demos=[ //ทดลอง
     {u:'admin',p:'admin',r:'admin',n:'ผู้ดูแลระบบ',c:'#6A1B9A'},
     {u:'kru1',p:'kru1',r:'homeroom',n:'ครูประจำชั้น',c:'var(--gold)'},
     {u:'teacher1',p:'teacher1',r:'teacher',n:'ครูผู้สอน',c:'#1565C0'},
-    {u:'student',p:'student',r:'student',n:'นักเรียน',c:'#2E7D32'}
   ];
   var icons=b.role_icons||{};
   var demoHtml=demos.map(function(d){
@@ -344,9 +343,9 @@ function renderLogin(){
     +'<div class="lb-desc">'+A.esc(app.description||'')+'</div>'
     +'<div class="lb-feats">'
     +'<div class="lb-feat"><i class="bi bi-people-fill"></i> ข้อมูลนักเรียน · ชั้นเรียน ครบทุกมิติ</div>'
-    +'<div class="lb-feat"><i class="bi bi-clipboard-check-fill"></i> เช็กชื่อ · คะแนนความประพฤติ แบบเรียลไทม์</div>'
-    +'<div class="lb-feat"><i class="bi bi-house-heart-fill"></i> เยี่ยมบ้าน · สุขภาพ · ประกาศและรายงาน</div></div></div>'
-    +'<div class="lb-foot"><i class="bi bi-shield-check"></i> ปลอดภัยระดับองค์กร · '+A.esc(app.org||'')+'</div></div>'
+    +'<div class="lb-feat"><i class="bi bi-clipboard-check-fill"></i> เช็กชื่อ · แบบเรียลไทม์</div>'
+    +'<div class="lb-feat"><i class="bi bi-house-heart-fill"></i> เยี่ยมบ้าน · ประกาศและรายงาน</div></div></div>'
+    +'<div class="lb-foot"><i class="bi bi-shield-check"></i> โรงเรียนวังน้ำคู้ศึกษา · '+A.esc(app.org||'')+'</div></div>'
     +'<div class="login-form"><div class="lf-card">'
     +'<div class="lf-head"><div class="ic"><i class="bi bi-box-arrow-in-right"></i></div><h2>เข้าสู่ระบบ</h2><p>ยินดีต้อนรับสู่ '+A.esc(app.short||'CAS')+'</p></div>'
     +'<form id="login-form">'
@@ -354,7 +353,6 @@ function renderLogin(){
     +'<div class="field"><label>รหัสผ่าน</label><div class="inwrap"><i class="bi bi-lock"></i><input id="lg-pass" type="password" autocomplete="current-password" placeholder="รหัสผ่าน" required><button type="button" class="eye" id="lg-eye"><i class="bi bi-eye"></i></button></div></div>'
     +'<button type="submit" class="btn btn-primary btn-block" data-state="idle" id="lg-btn"><span class="st st-idle"><i class="bi bi-box-arrow-in-right"></i> เข้าสู่ระบบ</span></button>'
     +'</form>'
-    +'<div class="lf-demos"><div class="lbl">— บัญชีทดลองใช้งาน (คลิกเพื่อกรอกอัตโนมัติ) —</div><div class="lf-demo-grid">'+demoHtml+'</div></div>'
     +'</div></div></div>';
 
   var form=A.$('#login-form');
@@ -368,60 +366,30 @@ function navConfig(){
   var role=Store.user.role;
   var groups=[];
   groups.push({label:'ภาพรวม',items:[{h:'#/dashboard',i:'grid-1x2-fill',t:'แดชบอร์ด'}]});
-  if(role==='student'){
-    groups.push({label:'ข้อมูลของฉัน',items:[
-      {h:'#/me-attendance',i:'calendar-check',t:'การมาเรียน'},
-      {h:'#/me-grades',i:'mortarboard',t:'ผลการเรียน'},
-      {h:'#/me-classroom',i:'easel2',t:'ห้องเรียนของฉัน'},
-      {h:'#/me-conduct',i:'award',t:'คะแนนความประพฤติ'},
-      {h:'#/me-savings',i:'piggy-bank',t:'เงินออม'},
-      {h:'#/me-fund',i:'wallet2',t:'เงินกิจกรรม'},
-      {h:'#/me-activities',i:'heart',t:'ชั่วโมงกิจกรรม'},
-      {h:'#/me-leave',i:'calendar2-x',t:'ขอลา'},
-      {h:'#/me-health',i:'heart-pulse',t:'สุขภาพ'}
+  var info=[];
+  if(can('student.view'))info.push({h:'#/students',i:'people-fill',t:'นักเรียน'});
+  if(can('class.view'))info.push({h:'#/classes',i:'door-open-fill',t:'ชั้นเรียน'});
+  groups.push({label:'งานทะเบียน',items:info});
+  
+  var work=[];
+  if(can('attendance.view'))work.push({h:'#/attendance',i:'calendar-check-fill',t:'เช็กชื่อ'});
+  if(can('visit.view'))work.push({h:'#/visits',i:'house-heart-fill',t:'เยี่ยมบ้าน'});
+  if(work.length)groups.push({label:'งานดูแลนักเรียน',items:work});
+  
+  if(can('classroom.view'))groups.push({label:'บริหารห้องเรียน',items:[
+    {h:'#/timetable',i:'calendar3-week-fill',t:'ตารางเรียน'}
+  ]});
+  
+  var comm=[{h:'#/announcements',i:'megaphone-fill',t:'ประกาศ'}];
+  if(can('event.view'))comm.push({h:'#/calendar',i:'calendar-event-fill',t:'ปฏิทินกิจกรรม'});
+  if(can('report.view'))comm.push({h:'#/reports',i:'bar-chart-fill',t:'รายงาน'});
+  groups.push({label:'ข่าวสาร & รายงาน',items:comm});
+  
+  if(role==='admin'){
+    groups.push({label:'ผู้ดูแลระบบ',items:[
+      {h:'#/users',i:'person-gear',t:'บัญชีผู้ใช้'},
+      {h:'#/audit',i:'clock-history',t:'บันทึกการใช้งาน'}
     ]});
-    groups.push({label:'ข่าวสาร',items:[{h:'#/announcements',i:'megaphone',t:'ประกาศ'},{h:'#/calendar',i:'calendar-event',t:'ปฏิทินกิจกรรม'}]});
-  }else{
-    var info=[];
-    if(can('student.view'))info.push({h:'#/students',i:'people-fill',t:'นักเรียน'});
-    if(can('class.view'))info.push({h:'#/classes',i:'door-open-fill',t:'ชั้นเรียน'});
-    groups.push({label:'งานทะเบียน',items:info});
-    var work=[];
-    if(can('attendance.view'))work.push({h:'#/attendance',i:'calendar-check-fill',t:'เช็กชื่อ'});
-    if(can('conduct.view'))work.push({h:'#/conduct',i:'award-fill',t:'ความประพฤติ'});
-    if(can('savings.view'))work.push({h:'#/savings',i:'piggy-bank-fill',t:'ออมเงิน'});
-    if(can('visit.view'))work.push({h:'#/visits',i:'house-heart-fill',t:'เยี่ยมบ้าน'});
-    if(can('health.view'))work.push({h:'#/health',i:'heart-pulse-fill',t:'สุขภาพ'});
-    if(work.length)groups.push({label:'งานดูแลนักเรียน',items:work});
-    var care=[];
-    if(can('care.view')){care.push({h:'#/sdq',i:'clipboard2-pulse-fill',t:'SDQ ประเมินพฤติกรรม'});care.push({h:'#/screening',i:'diagram-3-fill',t:'คัดกรอง 4 กลุ่ม'});}
-    if(can('leave.view'))care.push({h:'#/leave',i:'calendar2-week-fill',t:'การลา'});
-    if(care.length)groups.push({label:'ดูแลช่วยเหลือนักเรียน',items:care});
-    var acad=[];
-    if(can('grade.view')){acad.push({h:'#/subjects',i:'journal-bookmark-fill',t:'รายวิชา'});acad.push({h:'#/grades',i:'card-checklist',t:'บันทึกผลการเรียน'});}
-    if(can('eval.manage')||can('grade.view'))acad.push({h:'#/eval',i:'patch-check-fill',t:'ประเมินคุณลักษณะ'});
-    if(can('grade.view'))acad.push({h:'#/documents',i:'file-earmark-text-fill',t:'เอกสาร ปพ. (สมุดพก/ปพ.1)'});
-    if(acad.length)groups.push({label:'งานวัดผล & เอกสาร (ปพ.)',items:acad});
-    if(can('classroom.view'))groups.push({label:'บริหารห้องเรียน',items:[
-      {h:'#/timetable',i:'calendar3-week-fill',t:'ตารางเรียน'},
-      {h:'#/duty',i:'bucket-fill',t:'เวรประจำวัน'},
-      {h:'#/committee',i:'diagram-2-fill',t:'คณะกรรมการห้อง'},
-      {h:'#/seating',i:'grid-3x3-gap-fill',t:'ผังที่นั่ง'}
-    ]});
-    var money=[];
-    if(can('fund.view'))money.push({h:'#/fund',i:'wallet-fill',t:'เงินกิจกรรม'});
-    if(can('activity.view'))money.push({h:'#/activities',i:'heart-fill',t:'กิจกรรมพัฒนาผู้เรียน'});
-    if(money.length)groups.push({label:'การเงิน & กิจกรรม',items:money});
-    var comm=[{h:'#/announcements',i:'megaphone-fill',t:'ประกาศ'}];
-    if(can('event.view'))comm.push({h:'#/calendar',i:'calendar-event-fill',t:'ปฏิทินกิจกรรม'});
-    if(can('report.view'))comm.push({h:'#/reports',i:'bar-chart-fill',t:'รายงาน'});
-    groups.push({label:'ข่าวสาร & รายงาน',items:comm});
-    if(role==='admin'){
-      groups.push({label:'ผู้ดูแลระบบ',items:[
-        {h:'#/users',i:'person-gear',t:'บัญชีผู้ใช้'},
-        {h:'#/audit',i:'clock-history',t:'บันทึกการใช้งาน'}
-      ]});
-    }
   }
   return groups;
 }
