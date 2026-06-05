@@ -2,9 +2,9 @@
  * ═══════════════════════════════════════════════════════════════
  *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
  *  File:        11_Menu.gs — Sheet Menu UI · Initialize · Seed · Warm trigger · About
- *  Version:     1.0.0
+ *  Version:     0.0.1
  *  Last Update: 2026-05-30
- *  Developer:   ครูวิรัตน์  หาดคำ · www.kruwirat.com
+ *  Developer:   ครูที
  *  License:     Proprietary · © 2026
  * ═══════════════════════════════════════════════════════════════
  */
@@ -92,7 +92,6 @@ function _warm_() {
     DB_readAll(SHEETS.SETTINGS);
     DB_readAll(SHEETS.CLASSES);
     DB_readAll(SHEETS.STUDENTS);   // ชีตใหญ่/ใช้บ่อยสุด — อุ่น cache ไว้ก่อน
-    DB_readAll(SHEETS.SUBJECTS);
     App_bootAll('', {});           // อุ่น public bundle ใน CacheService
   } catch (e) {}
   return new Date().toISOString();
