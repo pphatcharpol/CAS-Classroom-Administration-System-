@@ -2,9 +2,9 @@
  * ═══════════════════════════════════════════════════════════════
  *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
  *  File:        10_Seed.gs — ข้อมูลตัวอย่างเสมือนจริง (ครู · ชั้นเรียน · นักเรียน · เช็กชื่อ ฯลฯ)
- *  Version:     1.0.0
+ *  Version:     0.0.1
  *  Last Update: 2026-05-30
- *  Developer:   ครูวิรัตน์  หาดคำ · www.kruwirat.com
+ *  Developer:   ครูที
  *  License:     Proprietary · © 2026
  * ═══════════════════════════════════════════════════════════════
  */
@@ -37,34 +37,31 @@ function Seed_run() {
   // ── Admin ── (เก็บ object ที่ return ไว้ใช้แทนการ DB_readAll กลาง batch)
   var adminUser = Seed_user_('admin', 'admin', 'admin', 'นายผู้ดูแล ระบบ', 'นาย');
 
-  // ── ครูประจำชั้น + ครูผู้สอน ──
+  // ── ครู ──
   var classDefs = [
     { level: 'ม.1', room: '1', color: '#A67C00' },
-    { level: 'ม.2', room: '2', color: '#C99700' },
+    { level: 'ม.2', room: '1', color: '#C99700' },
     { level: 'ม.3', room: '1', color: '#9A7B1E' }
   ];
 
-  var homeroomIds = [];
+  var teacherIds = [];
   classDefs.forEach(function (c, i) {
-    var hr = Seed_user_('kru' + (i + 1), 'kru' + (i + 1), 'homeroom',
-      'ครู' + _rand_(SEED.maleFirst.concat(SEED.femaleFirst)) + ' ' + _rand_(SEED.last), 'นาง');
-    homeroomIds.push(hr.id);
+    var t = Seed_user_('teacher' + (i + 1), 'teacher' + (i + 1), 'teacher',
+      'ครู' + _rand_(SEED.maleFirst.concat(SEED.femaleFirst)) + ' ' + _rand_(SEED.last), 'นาย/นาง');
+    teacherIds.push(t.id);
   });
-  // ครูผู้สอน 2 คน
-  Seed_user_('teacher1', 'teacher1', 'teacher', 'ครูที ปราถนา', 'นาย');
-  Seed_user_('teacher2', 'teacher2', 'teacher', 'ครูแจน วาสนา', 'นาง');
 
   // ── Classes ──
   var classes = classDefs.map(function (c, i) {
     return DB_insert(SHEETS.CLASSES, {
       academic_year: year, level: c.level, room: c.room,
-      grade_band: cfg_gradeBand_(c.level), homeroom_teacher_id: homeroomIds[i],
+      grade_band: cfg_gradeBand_(c.level), homeroom_teacher_id: teacherIds[i],
       capacity: 40, color: c.color, note: '', status: 'active'
     });
   });
 
-  // ── Students + accounts + bulk ──
-  var studentRows = [], userRows = [];
+  // ── Students (ไม่มี User Accounts สำหรับเด็กแล้ว) ──
+  var studentRows = [];
   var seq = 1;
   classes.forEach(function (cls) {
     var n = _randInt_(18, 26);
@@ -73,60 +70,20 @@ function Seed_run() {
       var first = male ? _rand_(SEED.maleFirst) : _rand_(SEED.femaleFirst);
       var last = _rand_(SEED.last);
       var code = String(year - 543) + ('000' + seq).slice(-4);
-      var conduct = Math.random() < 0.12 ? _randInt_(45, 78) : _randInt_(82, 100);
       var sid = cfg_uid_('STU');
       studentRows.push({
         id: sid, student_code: code, title: male ? 'ด.ช.' : 'ด.ญ.',
         first_name: first, last_name: last, nickname: _rand_(SEED.nick),
         class_id: cls.id, number: k, gender: male ? 'male' : 'female',
-        birthdate: (year - 543 - _randInt_(8, 16)) + '-' + ('0' + _randInt_(1, 12)).slice(-2) + '-' + ('0' + _randInt_(1, 28)).slice(-2),
-        id_card: '1' + _randInt_(1000000000, 9999999999),
-        blood_type: _rand_(SEED.blood),
-        address: _randInt_(1, 199) + ' หมู่ ' + _randInt_(1, 12) + ' ' + _rand_(SEED.villages),
-        phone: '08' + _randInt_(10000000, 99999999),
-        parent_name: 'นาย/นาง ' + _rand_(SEED.last) + ' ' + last,
-        parent_relation: _rand_(['บิดา', 'มารดา', 'ผู้ปกครอง']),
-        parent_phone: '09' + _randInt_(10000000, 99999999),
-      });
-      var salt = Auth_salt_();
-      userRows.push({
-        username: code.toLowerCase(), password_hash: Auth_hash_(code, salt), salt: salt,
-        role: 'student', full_name: (male ? 'ด.ช.' : 'ด.ญ.') + first + ' ' + last,
-        photo_url: '', email: '', phone: '', student_id: sid, class_id: cls.id,
-        title: male ? 'ด.ช.' : 'ด.ญ.', must_change_pw: true, status: 'active'
+        birthdate: (year - 543 - _randInt_(13, 16)) + '-' + ('0' + _randInt_(1, 12)).slice(-2) + '-' + ('0' + _randInt_(1, 28)).slice(-2),
+        id_card: '1' + _randInt_(1000000000, 9999999999), blood_type: _rand_(SEED.blood),
+        address: _randInt_(1, 199) + ' หมู่ ' + _randInt_(1, 12) + ' ' + _rand_(SEED.villages), phone: '08' + _randInt_(10000000, 99999999),
+        parent_name: 'นาย/นาง ' + _rand_(SEED.last) + ' ' + last, parent_relation: _rand_(['บิดา', 'มารดา', 'ผู้ปกครอง']), parent_phone: '09' + _randInt_(10000000, 99999999),
       });
       seq++;
     }
   });
   DB_bulkInsert(SHEETS.STUDENTS, studentRows);
-  DB_bulkInsert(SHEETS.USERS, userRows);
-
-  // บัญชีนักเรียนสาธิต (student/student) ผูกกับนักเรียนจริงคนแรก — ไว้สำหรับปุ่ม demo บนหน้า login
-  var demoStu = studentRows[0];
-  if (demoStu) {
-    var dsalt = Auth_salt_();
-    DB_insert(SHEETS.USERS, {
-      username: 'student', password_hash: Auth_hash_('student', dsalt), salt: dsalt,
-      role: 'student', full_name: (demoStu.title || '') + demoStu.first_name + ' ' + demoStu.last_name,
-      photo_url: '', email: '', phone: '', student_id: demoStu.id, class_id: demoStu.class_id,
-      title: demoStu.title, must_change_pw: false, status: 'active'
-    });
-  }
-
-  // ── Attendance (3 วันล่าสุด) ──
-  var attRows = [];
-  var statuses = ['present', 'present', 'present', 'present', 'present', 'late', 'sick', 'leave', 'absent'];
-  for (var d = 0; d < 3; d++) {
-    var date = cfg_dateOnly_(new Date(Date.now() - (d + 1) * 864e5));
-    studentRows.forEach(function (s) {
-      attRows.push({
-        date: date, class_id: s.class_id, student_id: s.id,
-        status: _rand_(statuses), check_in: '', note: '',
-        recorded_by: 'system', source: 'seed'
-      });
-    });
-  }
-  DB_bulkInsert(SHEETS.ATTENDANCE, attRows);
 
 
   // ── Home visits ──
@@ -175,31 +132,6 @@ function Seed_run() {
     };
   });
   DB_bulkInsert(SHEETS.ANNOUNCE, annRows);
-
-  
-  // ── บริหารห้องเรียน: เวร · กรรมการ · ผังที่นั่ง · ตารางเรียน ──
-  classes.forEach(function (cls) {
-    var subs = subjByClass[cls.id] || [], idx = 0;
-    WEEKDAYS5.forEach(function (w) {
-      PERIODS.forEach(function (per) {
-        var su = subs.length ? subs[idx % subs.length] : null;
-        if (su) ttRows.push({ class_id: cls.id, academic_year: year, term: '1', weekday: w.v, period: per.p, subject_id: su.id, subject_text: '', teacher_text: '', room: cls.level + '/' + cls.room, recorded_by: 'system' });
-        idx++;
-      });
-    });
-  });
-
-  // ── กิจกรรมพัฒนาผู้เรียน/จิตอาสา ──
-  var actDefs = [
-    { type: 'social', title: 'บำเพ็ญประโยชน์ทำความสะอาดชุมชน' }, { type: 'social', title: 'อาสาปลูกป่า' },
-    { type: 'scout', title: 'เข้าค่ายลูกเสือ-เนตรนารี' }, { type: 'club', title: 'กิจกรรมชุมนุม' }, { type: 'guidance', title: 'กิจกรรมแนะแนวอาชีพ' }
-  ];
-  var actRows = [];
-  studentRows.forEach(function (s) {
-    var n = _randInt_(0, 3);
-    for (var i = 0; i < n; i++) { var a = _rand_(actDefs); actRows.push({ student_id: s.id, class_id: s.class_id, academic_year: year, activity_type: a.type, title: a.title, hours: _randInt_(1, 6), activity_date: cfg_dateOnly_(new Date(Date.now() - _randInt_(5, 60) * 864e5)), location: 'โรงเรียน/ชุมชน', note: '', recorded_by: 'system' }); }
-  });
-  DB_bulkInsert(SHEETS.ACTIVITY, actRows);
 
   // ── ปฏิทินกิจกรรม ──
   var evDefs = [
