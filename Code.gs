@@ -4,7 +4,7 @@
  *  File:        Code.gs — Web entry (doGet) · include() · inline boot state
  *  Version:     1.0.0
  *  Last Update: 2026-05-30
- *  Developer:   ครูวิรัตน์  หาดคำ · www.kruwirat.com
+ *  Developer:   ครูที
  *  License:     Proprietary · © 2026
  * ═══════════════════════════════════════════════════════════════
  */
