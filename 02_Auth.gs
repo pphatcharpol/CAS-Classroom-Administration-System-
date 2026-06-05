@@ -2,9 +2,9 @@
  * ═══════════════════════════════════════════════════════════════
  *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
  *  File:        02_Auth.gs — Authentication · SHA-256+Salt · Token session · RBAC · Audit
- *  Version:     1.0.0
+ *  Version:     0.0.1
  *  Last Update: 2026-05-30
- *  Developer:   ครูวิรัตน์  หาดคำ · www.kruwirat.com
+ *  Developer:   ครูที
  *  License:     Proprietary · © 2026
  * ═══════════════════════════════════════════════════════════════
  */
@@ -105,15 +105,10 @@ function Auth_require_(user, cap) {
   return true;
 }
 
-// ครูประจำชั้นเข้าถึงเฉพาะห้องตนเอง — admin เข้าถึงทุกห้อง
+// ให้ครูเข้าถึงได้ทุกห้อง (รวมครูประจำวิชาและประจำชั้น)
 function Auth_classScope_(user) {
-  if (user.role === 'admin') return null; // null = ทุกห้อง
-  if (user.role === 'homeroom') {
-    var classes = DB_readAll(SHEETS.CLASSES).filter(function (c) {
-      return c.homeroom_teacher_id === user.id || c.co_teacher_id === user.id;
-    });
-    return classes.map(function (c) { return c.id; });
-  }
+  if (user.role === 'admin' || user.role === 'teacher') return null; // null = เห็นทุกห้อง
+  return null;
 }
 
 /* ── Change password / profile ──────────────────────────────────── */
