@@ -4,7 +4,7 @@
  *  File:        15_Classroom.gs — บริหารห้องเรียน: เวรประจำวัน · คณะกรรมการห้อง · ผังที่นั่ง · ตารางเรียน
  *  Version:     1.4.0
  *  Last Update: 2026-05-31
- *  Developer:   ครูวิรัตน์  หาดคำ · www.kruwirat.com
+ *  Developer:   ครูที
  *  License:     Proprietary · © 2026
  * ═══════════════════════════════════════════════════════════════
  */
@@ -60,17 +60,24 @@ function _classStudents_(classId) {
 function Timetable_get(user, p) {
   var classId = _classroomScope_(user, p);
   var year = p.year || cfg_academicYear_(), term = p.term || '1';
-  var subjIdx = DB_index(SHEETS.SUBJECTS), userIdx = DB_index(SHEETS.USERS);
-  var rows = DB_readAll(SHEETS.TIMETABLE).filter(function (t) { return t.class_id === classId && String(t.academic_year) === String(year) && String(t.term) === String(term); });
+  var userIdx = DB_index(SHEETS.USERS); // เอา subjIdx ออก
+  
+  var rows = DB_readAll(SHEETS.TIMETABLE).filter(function (t) { 
+    return t.class_id === classId && String(t.academic_year) === String(year) && String(t.term) === String(term); 
+  });
+  
   var grid = {}; // key weekday-period → cell
   rows.forEach(function (t) {
-    var su = subjIdx[t.subject_id];
     grid[t.weekday + '-' + t.period] = {
       weekday: Number(t.weekday), period: Number(t.period),
-      subject_id: t.subject_id, subject_text: t.subject_text || (su ? su.name : ''),
-      subject_code: su ? su.code : '', teacher_text: t.teacher_text || '', room: t.room || ''
+      subject_id: t.subject_id || '', 
+      subject_text: t.subject_text || '',
+      subject_code: '', 
+      teacher_text: t.teacher_text || '', 
+      room: t.room || ''
     };
   });
+  
   return { class_id: classId, year: year, term: term, grid: grid, weekdays: WEEKDAYS5, periods: PERIODS, lunch_after: LUNCH_AFTER };
 }
 
