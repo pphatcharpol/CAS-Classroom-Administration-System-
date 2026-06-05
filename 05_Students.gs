@@ -2,9 +2,9 @@
  * ═══════════════════════════════════════════════════════════════
  *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
  *  File:        05_Students.gs — โมดูลชั้นเรียน · นักเรียน · บัญชีผู้ใช้
- *  Version:     1.0.0
+ *  Version:     0.0.1
  *  Last Update: 2026-05-30
- *  Developer:   ครูวิรัตน์  หาดคำ · www.kruwirat.com
+ *  Developer:   ครูที
  *  License:     Proprietary · © 2026
  * ═══════════════════════════════════════════════════════════════
  */
@@ -159,7 +159,7 @@ function Student_delete(user, p) {
   return true;
 }
 
-// นำเข้านักเรียนแบบกลุ่มจาก Excel/CSV — สร้างบัญชีอัตโนมัติ + ข้ามรายการซ้ำ
+// นำเข้านักเรียนแบบกลุ่มจาก Excel/CSV (ไม่มีการสร้างบัญชีผู้ใช้นักเรียนแล้ว)
 function Student_bulkImport(user, p) {
   Auth_require_(user, 'student.manage');
   var rows = p.rows || [];
@@ -172,22 +172,28 @@ function Student_bulkImport(user, p) {
     classByLabel[(c.level + '/' + c.room).replace(/\s/g, '')] = c.id;
     classByLabel[c.id] = c.id;
   });
-  var existingCodes = {}; DB_readAll(SHEETS.STUDENTS).forEach(function (s) { if (s.student_code) existingCodes[String(s.student_code).trim()] = true; });
-  var existingUser = {}; DB_readAll(SHEETS.USERS).forEach(function (u) { existingUser[String(u.username).toLowerCase()] = true; });
+  var existingCodes = {}; 
+  DB_readAll(SHEETS.STUDENTS).forEach(function (s) { 
+    if (s.student_code) existingCodes[String(s.student_code).trim()] = true; 
+  });
 
   var stRows = [], errors = [], created = 0, skipped = 0;
   rows.forEach(function (r, i) {
     var line = Number(r.__line || (i + 1));
     var code = String(r.student_code || '').trim();
     var fn = String(r.first_name || '').trim(), ln = String(r.last_name || '').trim();
+    
     if (!code || !fn || !ln) { errors.push({ line: line, msg: 'ขาดข้อมูลจำเป็น (เลขประจำตัว/ชื่อ/นามสกุล)' }); return; }
     if (existingCodes[code]) { skipped++; errors.push({ line: line, msg: 'เลขประจำตัว ' + code + ' มีอยู่แล้ว (ข้าม)' }); return; }
+    
     var clsKey = String(r.class || r.class_label || '').replace(/\s/g, '');
     var classId = classByLabel[clsKey] || '';
     if (!classId) { errors.push({ line: line, msg: 'ไม่พบชั้นเรียน "' + (r.class || r.class_label || '-') + '"' }); return; }
+    
     var gender = /หญิง|female|^f/i.test(r.gender || '') ? 'female' : (/ชาย|male|^m/i.test(r.gender || '') ? 'male' : '');
     var title = String(r.title || '').trim() || (gender === 'female' ? 'ด.ญ.' : 'ด.ช.');
     var sid = cfg_uid_('STU');
+    
     existingCodes[code] = true;
     stRows.push({
       id: sid, student_code: code, title: title, first_name: fn, last_name: ln, nickname: r.nickname || '',
@@ -195,16 +201,11 @@ function Student_bulkImport(user, p) {
       id_card: String(r.id_card || ''), blood_type: r.blood_type || '', address: r.address || '', phone: String(r.phone || ''),
       parent_name: r.parent_name || '', parent_relation: r.parent_relation || '', parent_phone: String(r.parent_phone || ''),
     });
-    var uname = code.toLowerCase();
-    if (!existingUser[uname]) {
-      var salt = Auth_salt_();
-      userRows.push({ username: uname, password_hash: Auth_hash_(code, salt), salt: salt, role: 'student', full_name: title + fn + ' ' + ln, photo_url: '', email: '', phone: String(r.phone || ''), student_id: sid, class_id: classId, title: title, must_change_pw: true, status: 'active' });
-      existingUser[uname] = true;
-    }
     created++;
   });
+  
   if (stRows.length) DB_bulkInsert(SHEETS.STUDENTS, stRows);
-  if (userRows.length) DB_bulkInsert(SHEETS.USERS, userRows);
+  
   Audit_log(user, 'import', 'student', '', 'นำเข้า ' + created + ' · ข้าม ' + skipped + ' · ผิดพลาด ' + (errors.length - skipped));
   return { created: created, skipped: skipped, errors: errors };
 }
