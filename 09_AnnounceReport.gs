@@ -2,9 +2,9 @@
  * ═══════════════════════════════════════════════════════════════
  *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
  *  File:        09_AnnounceReport.gs — โมดูลประกาศข่าวสาร · รายงานสรุปตามบทบาท
- *  Version:     1.0.0
+ *  Version:     0.0.1
  *  Last Update: 2026-05-30
- *  Developer:   ครูวิรัตน์  หาดคำ · www.kruwirat.com
+ *  Developer:   ครูที
  *  License:     Proprietary · © 2026
  * ═══════════════════════════════════════════════════════════════
  */
