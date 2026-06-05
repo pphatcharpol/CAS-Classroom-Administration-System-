@@ -4,7 +4,7 @@
  File:        ScriptsPages.html — Dashboards (role-aware) + ทุกหน้าโมดูล (lazy-loaded)
  Version:     1.0.0
  Last Update: 2026-05-30
- Developer:   ครูวิรัตน์  หาดคำ · www.kruwirat.com
+ Developer:   ครูที
  License:     Proprietary · © 2026
  หมายเหตุ: ครอบด้วย script holder (type ที่เบราว์เซอร์ไม่ execute) — โหลด/eval ภายหลังตอน
            lazy-load ผ่าน loadPages(). ไฟล์นี้ include ตรงระดับ body ของ Index (ไม่ซ้อน script)
@@ -32,7 +32,6 @@
   function attBadge(st){var m=(Store.boot.att_status||{})[st];if(!m)return '<span class="badge b-muted">—</span>';
     var cls={present:'b-ok',late:'b-warn',leave:'b-info',sick:'b-purple',absent:'b-danger',activity:'b-info'}[st]||'b-muted';
     return '<span class="badge '+cls+'"><i class="bi bi-'+m.icon+'"></i> '+esc(m.label)+'</span>';}
-  function conductBadge(sc){sc=Number(sc);var c=sc>=90?'b-ok':sc>=80?'b-info':sc>=60?'b-warn':'b-danger';return '<span class="badge '+c+'"><i class="bi bi-award"></i> '+sc+'</span>';}
   function classOptions(sel){return (Store.__classes||[]).map(function(c){return '<option value="'+c.id+'"'+(c.id===sel?' selected':'')+'>'+esc(c.level+'/'+c.room)+'</option>';}).join('');}
   // cache รายชื่อชั้นเรียนฝั่ง client 90 วิ — สลับหน้าไม่ยิงซ้ำ (เร็วขึ้นมาก) · invClasses() ล้างเมื่อมีการแก้
   function loadClasses(force){
@@ -46,14 +45,13 @@
   var QUICK_STAFF=[
     {h:'#/attendance',i:'calendar-check-fill',t:'เช็กชื่อ',cap:'attendance.record'},
     {h:'#/students',i:'people-fill',t:'นักเรียน',cap:'student.view'},
-    {h:'#/activities',i:'heart-fill',t:'กิจกรรม',cap:'activity.view'},
     {h:'#/calendar',i:'calendar-event-fill',t:'ปฏิทิน',cap:'event.view'},
     {h:'#/announcements',i:'megaphone-fill',t:'ประกาศ',cap:'announce.view'},
     {h:'#/reports',i:'bar-chart-fill',t:'รายงาน',cap:'report.view'}
   ];
 
   function quickGrid(){
-    var list=Store.user.role==='student'?QUICK_STUDENT:QUICK_STAFF.filter(function(q){return !q.cap||can(q.cap);});
+    var list=QUICK_STAFF.filter(function(q){return !q.cap||can(q.cap);});
     return '<div class="quick-grid">'+list.map(function(q){return '<a class="quick-btn" href="'+q.h+'"><div class="qic"><i class="bi bi-'+q.i+'"></i></div><span>'+esc(q.t)+'</span></a>';}).join('')+'</div>';
   }
   function appLauncher(){
@@ -68,10 +66,6 @@
   }
   function staffMissions(d){
     var m=[];
-    var risk=(d.care&&d.care.counts)?((d.care.counts.risk||0)+(d.care.counts.problem||0)):0;
-    if(risk)m.push({type:'danger',icon:'diagram-3-fill',title:'นักเรียนกลุ่มเสี่ยง/มีปัญหา '+risk+' คน',sub:'ติดตามดูแลช่วยเหลือ',h:'#/screening'});
-    var con=(d.conduct&&d.conduct.atRisk)?d.conduct.atRisk.length:0;
-    if(con)m.push({type:'warn',icon:'shield-exclamation',title:'ความประพฤติต่ำกว่าเกณฑ์ '+con+' คน',sub:'ดูรายละเอียดและบันทึก',h:'#/conduct'});
     var pov=(d.visit&&d.visit.poverty)?((d.visit.poverty.poor||0)+(d.visit.poverty.extreme_poor||0)):0;
     if(pov)m.push({type:'danger',icon:'house-exclamation',title:'นักเรียนยากจน/ยากจนพิเศษ '+pov+' คน',sub:'เยี่ยมบ้าน · ขอรับเงินอุดหนุน กสศ.',h:'#/visits'});
     if(!m.length)m.push({type:'ok',icon:'check-circle-fill',title:'ทุกอย่างเรียบร้อยดี',sub:'ไม่มีรายการเร่งด่วนที่ต้องดำเนินการ',h:'#/dashboard'});
@@ -87,27 +81,21 @@
   Routes['#/dashboard']=function(){
     setTitle('แดชบอร์ด','ภาพรวมระบบ');
     call('dash.summary',{}).then(function(d){
-      if(d.role==='student')return renderStudentDash(d);
       renderStaffDash(d);
     }).catch(function(e){page().innerHTML=A.empty('exclamation-octagon','โหลดข้อมูลไม่สำเร็จ',e.message);});
   };
 
   function renderStaffDash(d){
-    var k=d.kpi||{};var att=d.attendance||{};var con=d.conduct||{};var vis=d.visit||{};
+    var k=d.kpi||{};var att=d.attendance||{};var vis=d.visit||{};
     var u=Store.user;
     var kpis=[
       {icon:'people-fill',value:num(k.students),label:'นักเรียนทั้งหมด',sub:'ชาย '+num(k.male)+' · หญิง '+num(k.female)},
       {icon:'door-open-fill',value:num(k.classes),label:'ชั้นเรียน'},
-      {icon:'calendar-check-fill',value:att.presentRate+'%',label:'อัตรามาเรียน',sub:'30 วันล่าสุด'},
-      {icon:'award-fill',value:con.avg,label:'ความประพฤติเฉลี่ย'}
+      {icon:'calendar-check-fill',value:att.presentRate+'%',label:'อัตรามาเรียน',sub:'30 วันล่าสุด'}
     ];
     if(u.role==='admin')kpis.push({icon:'person-badge-fill',value:num(k.teachers),label:'ครู/บุคลากร'});
-    if(d.academic)kpis.push({icon:'mortarboard-fill',value:Number(d.academic.avg_gpa||0).toFixed(2),label:'GPA เฉลี่ยห้อง'});
-    if(d.savings)kpis.push({icon:'piggy-bank-fill',value:money(d.savings.balance),label:'เงินออมรวม (บาท)'});
-    if(d.care&&d.care.counts)kpis.push({icon:'diagram-3-fill',value:num((d.care.counts.risk||0)+(d.care.counts.problem||0)),label:'นักเรียนกลุ่มเสี่ยง/มีปัญหา'});
+ 
     if(d.visit&&d.visit.poverty&&(d.visit.poverty.poor||d.visit.poverty.extreme_poor))kpis.push({icon:'house-heart-fill',value:num((d.visit.poverty.poor||0)+(d.visit.poverty.extreme_poor||0)),label:'นักเรียนยากจน (กสศ.)'});
-    if(d.fund&&d.fund.outstanding)kpis.push({icon:'wallet-fill',value:money(d.fund.outstanding),label:'เงินกิจกรรมค้างเก็บ'});
-    if(d.leave_pending)kpis.push({icon:'calendar2-week-fill',value:num(d.leave_pending),label:'คำขอลารออนุมัติ'});
 
     var attSegs=[
       {label:'มาเรียน',color:'#2E7D32',value:att.byStatus?att.byStatus.present:0},
@@ -117,26 +105,17 @@
       {label:'ขาดเรียน',color:'#C62828',value:att.byStatus?att.byStatus.absent:0}
     ];
     var trend=(att.trend||[]).map(function(t){return {label:TH.date(t.date).split(' ').slice(0,2).join(' '),value:t.rate,suffix:'%'};});
-
-    var conBands=con.bands||{};
-    var riskHtml=(con.atRisk||[]).slice(0,5).map(function(s){
-      return '<div class="flex items-center gap" style="padding:9px 0;border-bottom:1px solid var(--cream-3)">'+A.avatar(s.photo_url,s.full_name,36)+'<div class="grow"><b style="font-family:var(--font);font-size:14px">'+esc(s.full_name)+'</b><div class="muted" style="font-size:12px">'+esc(s.class_label)+'</div></div>'+conductBadge(s.conduct_score)+'</div>';
-    }).join('')||'<div class="muted center" style="padding:18px">ไม่มีนักเรียนกลุ่มเสี่ยง</div>';
-
     var annHtml=(d.announcements||[]).slice(0,4).map(annRow).join('')||'<div class="muted center" style="padding:18px">ยังไม่มีประกาศ</div>';
 
-    page().innerHTML=hero({pill:greeting()+' · '+u.full_name,pill_icon:'hand-thumbs-up-fill',title:'แดชบอร์ด'+(u.role==='homeroom'?'ครูประจำชั้น':u.role==='admin'?'ผู้ดูแลระบบ':'ครูผู้สอน'),sub:'ภาพรวมงานธุรการชั้นเรียน ปีการศึกษา '+(Store.boot.settings?Store.boot.settings.academic_year:''),deco:'speedometer2',kpis:kpis})
+    page().innerHTML=hero({pill:greeting()+' · '+u.full_name,pill_icon:'hand-thumbs-up-fill',title:'แดชบอร์ด '+(u.role==='admin'?'ผู้ดูแลระบบ':'ครู'),sub:'ภาพรวมงานธุรการชั้นเรียน ปีการศึกษา '+(Store.boot.settings?Store.boot.settings.academic_year:''),deco:'speedometer2',kpis:kpis})
     +staffMissions(d)
     +'<div class="card mb"><div class="card-h"><h3><i class="bi bi-lightning-charge-fill"></i> ทางลัด</h3></div>'+quickGrid()+'</div>'
     +'<div class="grid stagger" style="grid-template-columns:1.4fr 1fr;align-items:start;margin-bottom:16px">'
       +'<div class="card"><div class="card-h"><h3><i class="bi bi-graph-up-arrow"></i> แนวโน้มการมาเรียน (14 วัน)</h3></div>'+(trend.length?A.bars(trend):A.empty('calendar-x','ยังไม่มีข้อมูล','เริ่มเช็กชื่อเพื่อดูแนวโน้ม'))+'</div>'
       +'<div class="card"><div class="card-h"><h3><i class="bi bi-pie-chart-fill"></i> สัดส่วนการมาเรียน</h3></div><div class="flex items-center gap" style="gap:18px"><div>'+A.donut(attSegs,150)+'</div><div class="legend grow">'+attSegs.map(function(s){return '<div class="lg-row"><span class="dot" style="background:'+s.color+'"></span>'+esc(s.label)+'<span class="lg-v">'+num(s.value)+'</span></div>';}).join('')+'</div></div></div>'
     +'</div>'
-    +((d.care&&d.care.counts)||d.savings?'<div class="grid stagger" style="grid-template-columns:1fr 1fr;align-items:start;margin-bottom:16px">'+'</div>':'')
-    +((d.events&&d.events.length)||d.fund?'<div class="grid stagger" style="grid-template-columns:1fr 1fr;align-items:start;margin-bottom:16px">'+eventsCard(d.events)+'</div>':'')
-    +'<div class="grid stagger" style="grid-template-columns:1fr 1fr;align-items:start;margin-bottom:16px">'
-      +'<div class="card"><div class="card-h"><h3><i class="bi bi-shield-exclamation"></i> ความประพฤติกลุ่มเสี่ยง</h3>'+(con.atRisk&&con.atRisk.length?'<span class="badge b-danger">'+con.atRisk.length+' คน</span>':'')+'</div>'
-        +'<div class="flex gap" style="margin-bottom:10px">'+statMini('emoji-smile','#2E7D32','var(--ok-bg)',num(conBands.excellent||0),'ดีเยี่ยม')+statMini('emoji-neutral','#C9A227','var(--warn-bg)',num((conBands.watch||0)),'เฝ้าระวัง')+'</div>'+riskHtml+'</div>'
+    +((d.events&&d.events.length)?'<div class="grid stagger" style="grid-template-columns:1fr 1fr;align-items:start;margin-bottom:16px">'+eventsCard(d.events)+'</div>':'')
+    +'<div class="grid stagger" style="grid-template-columns:1fr;align-items:start;margin-bottom:16px">'
       +'<div class="card"><div class="card-h"><h3><i class="bi bi-megaphone-fill"></i> ประกาศล่าสุด</h3><button class="btn btn-sm btn-ghost" data-go="#/announcements">ทั้งหมด</button></div>'+annHtml+'</div>'
     +'</div>'
     +'<div class="card"><div class="card-h"><h3><i class="bi bi-grid-3x3-gap-fill"></i> ชั้นเรียน</h3><button class="btn btn-sm btn-ghost" data-go="#/students">ดูนักเรียน</button></div><div class="cards">'
@@ -200,8 +179,8 @@
   }
   function loadXLSX(){if(window.XLSX)return Promise.resolve();return new Promise(function(res,rej){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=function(){res();};s.onerror=function(){rej(new Error('โหลดตัวอ่าน Excel ไม่สำเร็จ — ลองใช้ไฟล์ .csv แทน'));};document.body.appendChild(s);});}
   function downloadStudentTemplate(){
-    var cls=(Store.__classes&&Store.__classes[0])?(Store.__classes[0].level+'/'+Store.__classes[0].room):'ป.4/1';
-    var headers=['เลขประจำตัว*','คำนำหน้า','ชื่อ*','นามสกุล*','ชื่อเล่น','ชั้น (เช่น ป.4/1)*','เลขที่','เพศ (ชาย/หญิง)','วันเกิด (yyyy-mm-dd)','เลขบัตรประชาชน','กรุ๊ปเลือด','ที่อยู่','เบอร์โทร','ชื่อผู้ปกครอง','ความเกี่ยวข้อง','เบอร์ผู้ปกครอง'];
+    var cls=(Store.__classes&&Store.__classes[0])?(Store.__classes[0].level+'/'+Store.__classes[0].room):'ม.1/1';
+    var headers=['เลขประจำตัว*','คำนำหน้า','ชื่อ*','นามสกุล*','ชื่อเล่น','ชั้น (เช่น ม.1/1)*','เลขที่','เพศ (ชาย/หญิง)','วันเกิด (yyyy-mm-dd)','เลขบัตรประชาชน','กรุ๊ปเลือด','ที่อยู่','เบอร์โทร','ชื่อผู้ปกครอง','ความเกี่ยวข้อง','เบอร์ผู้ปกครอง'];
     var ex1=['25690001','ด.ช.','สมชาย','ใจดี','ชาย',cls,'1','ชาย','2558-05-01','1234567890123','O','123 หมู่ 1','0812345678','นางสมหญิง ใจดี','มารดา','0898765432'];
     var ex2=['25690002','ด.ญ.','สมหญิง','รักเรียน','หญิง',cls,'2','หญิง','2558-08-12','','B','','','นายสมศักดิ์ รักเรียน','บิดา','0876543210'];
     var csv='﻿'+[headers,ex1,ex2].map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\r\n');
@@ -272,14 +251,14 @@
   function renderStudentsCards(d){
     var html='<div class="cards stagger">'+d.items.map(function(s){
       return '<div class="card pcard hover" data-sid="'+s.id+'"><div class="pcard-top">'+A.avatar(s.photo_url,s.full_name,54)+'<div style="min-width:0"><div class="pcard-name">'+esc(s.full_name)+'</div><div class="pcard-meta">'+esc(s.class_label)+' · เลขที่ '+esc(s.number)+'</div></div></div>'
-      +'<div class="pcard-body"><span class="badge b-muted"><i class="bi bi-person-vcard"></i> '+esc(s.student_code)+'</span><span class="badge '+(s.gender==='male'?'b-info':'b-purple')+'"><i class="bi bi-gender-'+(s.gender==='male'?'male':'female')+'"></i> '+(s.gender==='male'?'ชาย':'หญิง')+'</span>'+conductBadge(s.conduct_score)+'</div></div>';
+      +'<div class="pcard-body"><span class="badge b-muted"><i class="bi bi-person-vcard"></i> '+esc(s.student_code)+'</span><span class="badge '+(s.gender==='male'?'b-info':'b-purple')+'"><i class="bi bi-gender-'+(s.gender==='male'?'male':'female')+'"></i> '+(s.gender==='male'?'ชาย':'หญิง')+'</span>'+'</div></div>';
     }).join('')+'</div>'+pager(d);
     $('#st-list').innerHTML=html;
     wireStudentClicks();
   }
   function renderStudentsTable(d){
-    $('#st-list').innerHTML='<div class="tbl-wrap"><table class="tbl"><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ชั้น</th><th>เลขที่</th><th>เพศ</th><th>ความประพฤติ</th></tr></thead><tbody>'
-    +d.items.map(function(s){return '<tr class="row-click" data-sid="'+s.id+'"><td data-label="รหัส">'+esc(s.student_code)+'</td><td data-label="ชื่อ-นามสกุล"><div class="flex items-center gap-sm">'+A.avatar(s.photo_url,s.full_name,30)+' '+esc(s.full_name)+'</div></td><td data-label="ชั้น">'+esc(s.class_label)+'</td><td data-label="เลขที่">'+esc(s.number)+'</td><td data-label="เพศ">'+(s.gender==='male'?'ชาย':'หญิง')+'</td><td data-label="ความประพฤติ">'+conductBadge(s.conduct_score)+'</td></tr>';}).join('')
+    $('#st-list').innerHTML='<div class="tbl-wrap"><table class="tbl"><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ชั้น</th><th>เลขที่</th><th>เพศ</th></tr></thead><tbody>'
+    +d.items.map(function(s){return '<tr class="row-click" data-sid="'+s.id+'"><td data-label="รหัส">'+esc(s.student_code)+'</td><td data-label="ชื่อ-นามสกุล"><div class="flex items-center gap-sm">'+A.avatar(s.photo_url,s.full_name,30)+' '+esc(s.full_name)+'</div></td><td data-label="ชั้น">'+esc(s.class_label)+'</td><td data-label="เลขที่">'+esc(s.number)+'</td><td data-label="เพศ">'+(s.gender==='male'?'ชาย':'หญิง')+'</td></tr>';}).join('')
     +'</tbody></table></div>'+pager(d);
     wireStudentClicks();
   }
@@ -293,39 +272,35 @@
     return html;
   }
 
-  function openStudentDetail(id){
+function openStudentDetail(id){
     A.spinner(true,'กำลังโหลดข้อมูล…');
-    Promise.all([call('student.get',{id:id}),call('att.history',{student_id:id,limit:10}),call('conduct.history',{student_id:id})]).then(function(r){
-      A.spinner(false);var s=r[0],att=r[1],con=r[2];
+    Promise.all([call('student.get',{id:id}),call('att.history',{student_id:id,limit:10})]).then(function(r){
+      A.spinner(false);var s=r[0],att=r[1];
       var stat=att.stat||{};var attTotal=att.total||0;
       var rate=attTotal?Math.round(((stat.present+stat.late)/attTotal)*100):100;
-      var conTimeline=(con.items||[]).slice(0,8).map(function(c){
-        return '<div class="flex items-center gap" style="padding:8px 0;border-bottom:1px solid var(--cream-3)"><span class="badge '+(c.type==='add'?'b-ok':'b-danger')+'">'+(c.type==='add'?'+':'-')+c.points+'</span><div class="grow"><b style="font-family:var(--font);font-size:13.5px">'+esc(c.reason)+'</b><div class="muted" style="font-size:11.5px">'+TH.date(c.date)+' · '+esc(c.recorder_name)+'</div></div></div>';
-      }).join('')||'<div class="muted">ยังไม่มีรายการ</div>';
-      var manage=can('student.manage');var recCon=can('conduct.record');
+      var manage=can('student.manage');
       A.modal({size:'lg',html:
         '<div class="md-hero">'+A.avatar(s.photo_url,s.full_name,78)+'<div class="grow"><h2>'+esc(s.full_name)+'</h2><div class="sub"><i class="bi bi-mortarboard"></i> '+esc(s.class_label)+' · เลขที่ '+esc(s.number)+' · รหัส '+esc(s.student_code)+'</div></div><button class="modal-x" data-close><i class="bi bi-x-lg"></i></button></div>'
-        +'<div class="md-stats"><div class="md-stat"><div class="v">'+rate+'%</div><div class="l">อัตรามาเรียน</div></div><div class="md-stat"><div class="v" style="color:'+(s.conduct_score>=80?'var(--ok)':s.conduct_score>=60?'var(--warn)':'var(--danger)')+'">'+s.conduct_score+'</div><div class="l">ความประพฤติ</div></div><div class="md-stat"><div class="v">'+(s.blood_type||'-')+'</div><div class="l">กรุ๊ปเลือด</div></div></div>'
+        +'<div class="md-stats"><div class="md-stat"><div class="v">'+rate+'%</div><div class="l">อัตรามาเรียน</div></div><div class="md-stat"><div class="v">'+(s.blood_type||'-')+'</div><div class="l">กรุ๊ปเลือด</div></div></div>'
         +'<div class="modal-body" style="padding:0">'
         +'<div class="md-sec"><h4><i class="bi bi-person-lines-fill"></i> ข้อมูลส่วนตัว</h4><div class="info-grid">'
           +infoRow('ชื่อเล่น',s.nickname||'-')+infoRow('เพศ',s.gender==='male'?'ชาย':'หญิง')
           +infoRow('วันเกิด',s.birthdate?TH.dateLong(s.birthdate):'-')+infoRow('เบอร์โทร',s.phone||'-')
           +infoRow('ที่อยู่',s.address||'-',true)+'</div></div>'
         +'<div class="md-sec"><h4><i class="bi bi-people"></i> ผู้ปกครอง</h4><div class="info-grid">'+infoRow('ชื่อผู้ปกครอง',s.parent_name||'-')+infoRow('ความเกี่ยวข้อง',s.parent_relation||'-')+infoRow('เบอร์ติดต่อ',s.parent_phone||'-')+'</div></div>'
-        +'<div class="md-sec"><h4><i class="bi bi-award"></i> ประวัติความประพฤติ</h4>'+conTimeline+'</div>'
         +'</div>'
         +'<div class="modal-foot">'
-          +(recCon?'<button class="btn btn-soft" id="sd-conduct"><i class="bi bi-plus-slash-minus"></i> บันทึกคะแนน</button>':'')
           +(manage?'<button class="btn btn-ghost" id="sd-edit"><i class="bi bi-pencil"></i> แก้ไข</button><button class="btn btn-danger" id="sd-del"><i class="bi bi-trash"></i> ลบ</button>':'')
           +'<button class="btn btn-primary" data-close>ปิด</button></div>',
         onMount:function(bd){
           if($('#sd-edit',bd))$('#sd-edit',bd).addEventListener('click',function(){A.closeModal();openStudentForm(s);});
-          if($('#sd-conduct',bd))$('#sd-conduct',bd).addEventListener('click',function(){A.closeModal();openConductForm(s);});
           if($('#sd-del',bd))$('#sd-del',bd).addEventListener('click',function(){A.confirm({danger:true,title:'ลบนักเรียน?',message:'ข้อมูลของ '+s.full_name+' จะถูกลบออกจากระบบ',confirm:'ลบ'}).then(function(ok){if(!ok)return;call('student.delete',{id:s.id}).then(function(){invClasses();A.ok('ลบเรียบร้อย','');A.closeModal();loadStudents();});});});
         }
       });
     }).catch(function(e){A.spinner(false);A.err('ผิดพลาด',e.message);});
   }
+
+
   function infoRow(l,v,full){return '<div class="info-row'+(full?' full':'')+'" style="'+(full?'grid-column:1/-1':'')+'"><div class="l">'+esc(l)+'</div><div class="v">'+esc(v)+'</div></div>';}
 
   function openStudentForm(s){
@@ -384,7 +359,7 @@
   }
   function openClassForm(c){
     c=c||{};var edit=!!c.id;
-    var teachers=(Store.__teachers||[]).filter(function(t){return t.role==='homeroom'||t.role==='teacher'||t.role==='admin';});
+    var teachers=(Store.__teachers||[]).filter(function(t){return t.role==='teacher'||t.role==='admin';});
     A.modal({html:
       '<div class="modal-head grad"><div class="mh-ic"><i class="bi bi-door-open"></i></div><h3>'+(edit?'แก้ไขชั้นเรียน':'เพิ่มชั้นเรียน')+'</h3><button class="modal-x" data-close><i class="bi bi-x-lg"></i></button></div>'
       +'<div class="modal-body"><div class="form-grid">'
@@ -679,7 +654,7 @@
       '<div class="modal-head grad"><div class="mh-ic"><i class="bi bi-megaphone"></i></div><h3>'+(a.id?'แก้ไขประกาศ':'เขียนประกาศ')+'</h3><button class="modal-x" data-close><i class="bi bi-x-lg"></i></button></div>'
       +'<div class="modal-body">'+fld('หัวข้อ *','af-title',a.title)
       +'<div class="form-grid"><div class="field"><label>หมวดหมู่</label><select class="input" id="af-cat">'+Object.keys(cats).map(function(k){return '<option value="'+k+'" '+sel(a.category,k)+'>'+esc(cats[k])+'</option>';}).join('')+'</select></div>'
-      +'<div class="field"><label>กลุ่มเป้าหมาย</label><select class="input" id="af-target"><option value="all" '+sel(a.target_role,'all')+'>ทุกคน</option><option value="student" '+sel(a.target_role,'student')+'>นักเรียน</option><option value="homeroom" '+sel(a.target_role,'homeroom')+'>ครูประจำชั้น</option><option value="teacher" '+sel(a.target_role,'teacher')+'>ครูผู้สอน</option></select></div></div>'
+      +'<div class="field"><label>กลุ่มเป้าหมาย</label><select class="input" id="af-target"><option value="all" '+sel(a.target_role,'all')+'>ทุกคน</option><option value="teacher" '+sel(a.target_role,'teacher')+'>ครูผู้สอน</option></select></div></div>'
       +'<div class="field full"><label>เนื้อหา</label><textarea class="input" id="af-body" style="min-height:140px">'+esc(a.body||'')+'</textarea></div>'
       +'<div class="field full"><label>ภาพหน้าปก</label><input type="file" class="input" id="af-cover" accept="image/*"></div>'
       +'<label class="flex items-center gap-sm" style="cursor:pointer"><input type="checkbox" id="af-pin" '+(a.pinned?'checked':'')+'> ปักหมุดประกาศ</label></div>'
@@ -700,7 +675,7 @@
   Routes['#/reports']=function(){
     setTitle('รายงาน','รายงานสรุปภาพรวม');
     call('report.overview',{}).then(function(d){
-      var att=d.attendance||{};var con=d.conduct||{};var vis=d.visit||{};
+      var att=d.attendance||{};var vis=d.visit||{};
       page().innerHTML=hero({pill:'รายงาน',pill_icon:'bar-chart-fill',title:'รายงานสรุปภาพรวม',sub:'สถิติและข้อมูลเชิงลึกของงานธุรการชั้นเรียน',deco:'clipboard-data-fill',kpis:[
         {icon:'people-fill',value:num(d.totalStudents),label:'นักเรียน',sub:'ช '+num(d.male)+' · ญ '+num(d.female)},
         {icon:'door-open-fill',value:num(d.totalClasses),label:'ชั้นเรียน'},
@@ -709,10 +684,9 @@
       ]})
       +'<div class="grid stagger" style="grid-template-columns:1fr 1fr;align-items:start;margin-bottom:16px">'
         +'<div class="card"><div class="card-h"><h3><i class="bi bi-gender-ambiguous"></i> สัดส่วนเพศ</h3></div><div class="flex items-center gap" style="gap:18px"><div>'+A.donut([{label:'ชาย',color:'#1565C0',value:d.male},{label:'หญิง',color:'#6A1B9A',value:d.female}],150)+'</div><div class="legend grow"><div class="lg-row"><span class="dot" style="background:#1565C0"></span>ชาย<span class="lg-v">'+num(d.male)+'</span></div><div class="lg-row"><span class="dot" style="background:#6A1B9A"></span>หญิง<span class="lg-v">'+num(d.female)+'</span></div></div></div></div>'
-        +'<div class="card"><div class="card-h"><h3><i class="bi bi-award"></i> ความประพฤติ</h3></div>'+A.bars([{label:'ดีเยี่ยม',value:(con.bands||{}).excellent||0,color:'#2E7D32'},{label:'ดี',value:(con.bands||{}).good||0,color:'#1565C0'},{label:'เฝ้าระวัง',value:(con.bands||{}).watch||0,color:'#C9A227'},{label:'เสี่ยง',value:(con.bands||{}).risk||0,color:'#C62828'}])+'</div>'
       +'</div>'
-      +'<div class="card"><div class="card-h"><h3><i class="bi bi-table"></i> สรุปรายชั้นเรียน</h3></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>ชั้นเรียน</th><th>ชาย</th><th>หญิง</th><th>รวม</th><th>ความประพฤติเฉลี่ย</th></tr></thead><tbody>'
-      +(d.byClass||[]).map(function(c){return '<tr><td data-label="ชั้นเรียน"><b>'+esc(c.label)+'</b></td><td data-label="ชาย">'+num(c.male)+'</td><td data-label="หญิง">'+num(c.female)+'</td><td data-label="รวม">'+num(c.total)+'</td><td data-label="ความประพฤติ">'+conductBadge(c.avg_conduct)+'</td></tr>';}).join('')
+      +'<div class="card"><div class="card-h"><h3><i class="bi bi-table"></i> สรุปรายชั้นเรียน</h3></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>ชั้นเรียน</th><th>ชาย</th><th>หญิง</th><th>รวม</th></tr></thead><tbody>'
+      +(d.byClass||[]).map(function(c){return '<tr><td data-label="ชั้นเรียน"><b>'+esc(c.label)+'</b></td><td data-label="ชาย">'+num(c.male)+'</td><td data-label="หญิง">'+num(c.female)+'</td><td data-label="รวม">'+num(c.total)+'</td></tr>';}).join('')
       +'</tbody></table></div></div>';
     });
   };
@@ -725,7 +699,7 @@
       var byRole={};(Store.boot.roles||{});d.items.forEach(function(u){byRole[u.role]=(byRole[u.role]||0)+1;});
       page().innerHTML=hero({pill:'ผู้ดูแลระบบ',pill_icon:'person-gear',title:'บัญชีผู้ใช้',sub:'จัดการผู้ใช้งานและสิทธิ์การเข้าถึง',deco:'people-fill',kpis:[
         {icon:'shield-lock-fill',value:num(byRole.admin||0),label:'ผู้ดูแล'},{icon:'person-badge-fill',value:num(byRole.homeroom||0),label:'ครูประจำชั้น'},
-        {icon:'easel2-fill',value:num(byRole.teacher||0),label:'ครูผู้สอน'},{icon:'mortarboard-fill',value:num(byRole.student||0),label:'นักเรียน'}
+        {icon:'easel2-fill',value:num(byRole.teacher||0),label:'ครูผู้สอน'}
       ]})
       +'<div class="toolbar"><div class="search"><i class="bi bi-search"></i><input id="us-q" placeholder="ค้นหาผู้ใช้"></div>'
       +'<select class="tb-select" id="us-role"><option value="">ทุกบทบาท</option>'+Object.keys(Store.boot.roles||{}).map(function(k){return '<option value="'+k+'">'+esc(Store.boot.roles[k])+'</option>';}).join('')+'</select>'
@@ -809,12 +783,14 @@
     });
   };
   function loadTimetable(){
-    $('#tt-grid').innerHTML=A.skeletonCards(2);
-    Promise.all([call('timetable.get',{class_id:ttState.class_id,term:ttState.term,year:$('#tt-year').value}),call('subject.list',{level:classLevelOf(ttState.class_id),year:$('#tt-year').value,term:ttState.term})]).then(function(r){
-      Store.__ttGrid={};var g=r[0].grid||{};Object.keys(g).forEach(function(k){Store.__ttGrid[k]=g[k];});
-      Store.__ttSubjects=r[1].items;renderTimetable();
-    });
-  }
+      $('#tt-grid').innerHTML=A.skeletonCards(2);
+      // เอา call('subject.list') ออกไปเลย
+      call('timetable.get',{class_id:ttState.class_id,term:ttState.term,year:$('#tt-year').value}).then(function(r){
+        Store.__ttGrid={};var g=r.grid||{};Object.keys(g).forEach(function(k){Store.__ttGrid[k]=g[k];});
+        Store.__ttSubjects=[]; // เลิกใช้
+        renderTimetable();
+      }).catch(function(e){ $('#tt-grid').innerHTML=A.empty('exclamation-octagon','ผิดพลาด',e.message); });
+    }
   function renderTimetable(){
     var m=cmMeta();var edit=can('classroom.manage');
     var head='<tr><th class="tt-period">คาบ</th>'+m.weekdays.map(function(w){return '<th>'+esc(w.label)+'</th>';}).join('')+'</tr>';
@@ -831,20 +807,20 @@
     if(edit)$$('#tt-grid .tt-cell').forEach(function(td){td.addEventListener('click',function(){openTtCell(td.dataset.key);});});
   }
   function openTtCell(key){
-    var c=Store.__ttGrid[key]||{};var subs=Store.__ttSubjects||[];
+    var c=Store.__ttGrid[key]||{};
     var parts=key.split('-');
     A.modal({html:
       '<div class="modal-head grad"><div class="mh-ic"><i class="bi bi-calendar3-week"></i></div><h3>'+wdLabel(parts[0])+' คาบ '+parts[1]+'</h3><button class="modal-x" data-close><i class="bi bi-x-lg"></i></button></div>'
-      +'<div class="modal-body"><div class="field"><label>รายวิชา</label><select class="input" id="tc-subj"><option value="">— เลือก/พิมพ์เอง —</option>'+subs.map(function(s){return '<option value="'+s.id+'"'+(c.subject_id===s.id?' selected':'')+'>'+esc(s.code+' '+s.name)+'</option>';}).join('')+'</select></div>'
-      +fld('หรือพิมพ์ชื่อวิชาเอง','tc-text',c.subject_id?'':(c.subject_text||''))
+      +'<div class="modal-body">'
+      +fld('ชื่อวิชา *','tc-text',c.subject_text||'') // เปลี่ยนเป็นพิมพ์ชื่อวิชาเองล้วนๆ
       +'<div class="form-grid">'+fld('ครูผู้สอน','tc-teacher',c.teacher_text)+fld('ห้อง','tc-room',c.room)+'</div></div>'
-      +'<div class="modal-foot">'+(c.subject_id||c.subject_text?'<button class="btn btn-danger" id="tc-clear"><i class="bi bi-trash"></i> ลบคาบ</button>':'')+'<button class="btn btn-ghost" data-close>ยกเลิก</button><button class="btn btn-primary" id="tc-ok"><i class="bi bi-check-lg"></i> ตกลง</button></div>',
+      +'<div class="modal-foot">'+(c.subject_text?'<button class="btn btn-danger" id="tc-clear"><i class="bi bi-trash"></i> ลบคาบ</button>':'')+'<button class="btn btn-ghost" data-close>ยกเลิก</button><button class="btn btn-primary" id="tc-ok"><i class="bi bi-check-lg"></i> ตกลง</button></div>',
       onMount:function(bd){
         $('#tc-ok',bd).addEventListener('click',function(){
-          var sid=val('tc-subj');var su=subs.filter(function(x){return x.id===sid;})[0];
           var text=val('tc-text');
-          if(!sid&&!text){A.err('ระบุรายวิชา','');return;}
-          Store.__ttGrid[key]={weekday:+parts[0],period:+parts[1],subject_id:sid,subject_code:su?su.code:'',subject_text:su?su.name:text,teacher_text:val('tc-teacher'),room:val('tc-room')};
+          if(!text){A.err('ระบุชื่อวิชา','');return;}
+          // เซฟเฉพาะ text ไม่ต้องมี subject_id
+          Store.__ttGrid[key]={weekday:+parts[0],period:+parts[1],subject_id:'',subject_code:'',subject_text:text,teacher_text:val('tc-teacher'),room:val('tc-room')};
           A.closeModal();renderTimetable();
         });
         if($('#tc-clear',bd))$('#tc-clear',bd).addEventListener('click',function(){delete Store.__ttGrid[key];A.closeModal();renderTimetable();});
@@ -867,56 +843,13 @@
   }
 
 
-  /* ════════════════ การเงินกิจกรรม / กิจกรรม / ปฏิทิน (ชุด D) ══ */
+  /* ════════════════ กิจกรรม / กิจกรรม / ปฏิทิน (ชุด D) ══ */
   function loadExMeta(){return Store.__exMeta?Promise.resolve(Store.__exMeta):call('extra.meta',{}).then(function(m){Store.__exMeta=m;return m;});}
   function eventDateBlock(dateStr,color){var d=TH.parse(dateStr);if(!(d instanceof Date))d=new Date();return '<div style="width:48px;text-align:center;flex-shrink:0"><div style="font-family:var(--font);font-weight:800;font-size:19px;color:'+(color||'#8A6608')+'">'+d.getDate()+'</div><div class="muted" style="font-size:10px">'+TH.MONTHS_SHORT[d.getMonth()]+' '+(d.getFullYear()+543).toString().slice(-2)+'</div></div>';}
   function eventRow(e){return '<div class="flex items-center gap" style="padding:9px 0;border-bottom:1px solid var(--cream-3)">'+eventDateBlock(e.event_date,e.type_color)+'<div class="grow" style="min-width:0"><b style="font-family:var(--font);font-size:13.5px">'+esc(e.title)+'</b><div class="muted" style="font-size:11.5px"><span class="badge" style="background:'+(e.type_color||'#8A6608')+'22;color:'+(e.type_color||'#8A6608')+'">'+esc(e.type_label)+'</span>'+(e.time?' · '+esc(e.time)+' น.':'')+(e.location?' · '+esc(e.location):'')+'</div></div></div>';}
   function eventsCard(events){
     return '<div class="card"><div class="card-h"><h3><i class="bi bi-calendar-event-fill"></i> กิจกรรมที่จะถึง</h3><button class="btn btn-sm btn-ghost" data-go="#/calendar">ทั้งหมด</button></div>'+((events&&events.length)?events.map(eventRow).join(''):A.empty('calendar','ยังไม่มีกิจกรรมเร็ว ๆ นี้',''))+'</div>';
   }
-  /* ── กิจกรรมพัฒนาผู้เรียน / จิตอาสา ── */
-  Routes['#/activities']=function(){
-    setTitle('กิจกรรมพัฒนาผู้เรียน','จิตอาสา/ลูกเสือ/ชุมนุม/แนะแนว');
-    Promise.all([loadExMeta(),call('act.overview',{}),loadClasses()]).then(function(r){
-      var o=r[1];var types=Store.__exMeta.activity_types;
-      page().innerHTML=hero({pill:'การเงิน & กิจกรรม',pill_icon:'heart-fill',title:'กิจกรรมพัฒนาผู้เรียน',sub:'บันทึกชั่วโมงกิจกรรมพัฒนาผู้เรียนและจิตอาสา',deco:'heart',kpis:[
-        {icon:'clock-history',value:num(o.total),label:'ชั่วโมงรวม'},{icon:'people-fill',value:num(o.students),label:'นักเรียนมีกิจกรรม'},{icon:'list-check',value:num(o.count),label:'รายการบันทึก'}
-      ]})
-      +'<div class="grid stagger" style="grid-template-columns:1fr 1fr;align-items:start;margin-bottom:16px"><div class="card"><div class="card-h"><h3><i class="bi bi-bar-chart-fill"></i> ชั่วโมงตามประเภท</h3></div>'+A.bars(types.map(function(t){return {label:t.label.split('/')[0],value:o.byType[t.key]||0,suffix:' ชม.'};}))+'</div>'
-      +'<div class="card"><div class="card-h"><h3><i class="bi bi-clipboard-plus-fill"></i> บันทึกกิจกรรม</h3></div><p class="muted mb">บันทึกชั่วโมงกิจกรรมพัฒนาผู้เรียน · ลูกเสือ/เนตรนารี · ชุมนุม · จิตอาสาเพื่อสังคม</p>'+(can('activity.manage')?'<button class="btn btn-primary" id="ac-add"><i class="bi bi-plus-lg"></i> บันทึกกิจกรรม</button>':'')+'</div></div>'
-      +'<div class="card"><div class="card-h"><h3><i class="bi bi-card-list"></i> รายการล่าสุด</h3></div><div id="ac-list"></div></div>';
-      if($('#ac-add'))$('#ac-add').addEventListener('click',function(){openActForm();});
-      loadActList();
-    });
-  };
-  function loadActList(){
-    $('#ac-list').innerHTML=A.skeletonCards(2);
-    call('act.list',{limit:60}).then(function(d){
-      $('#ac-list').innerHTML=d.items.length?('<div class="tbl-wrap"><table class="tbl"><thead><tr><th>วันที่</th><th>นักเรียน</th><th>ประเภท</th><th>กิจกรรม</th><th>ชม.</th>'+(can('activity.manage')?'<th></th>':'')+'</tr></thead><tbody>'+d.items.map(function(a){return '<tr><td data-label="วันที่">'+TH.date(a.activity_date)+'</td><td data-label="นักเรียน">'+esc(a.student_name)+'</td><td data-label="ประเภท"><span class="badge b-muted">'+esc(a.type_label)+'</span></td><td data-label="กิจกรรม">'+esc(a.title)+'</td><td data-label="ชม.">'+a.hours+'</td>'+(can('activity.manage')?'<td><button class="btn btn-sm btn-ghost" data-del="'+a.id+'"><i class="bi bi-trash"></i></button></td>':'')+'</tr>';}).join('')+'</tbody></table></div>'):A.empty('heart','ยังไม่มีบันทึกกิจกรรม','');
-      $$('#ac-list [data-del]').forEach(function(b){b.addEventListener('click',function(){A.confirm({danger:true,title:'ลบรายการ?',message:''}).then(function(ok){if(!ok)return;call('act.delete',{id:b.dataset.del}).then(function(){A.ok('ลบแล้ว','');loadActList();});});});});
-    });
-  }
-  function openActForm(){
-    var types=Store.__exMeta.activity_types;
-    A.modal({html:
-      '<div class="modal-head grad"><div class="mh-ic"><i class="bi bi-heart"></i></div><h3>บันทึกกิจกรรมพัฒนาผู้เรียน</h3><button class="modal-x" data-close><i class="bi bi-x-lg"></i></button></div>'
-      +'<div class="modal-body"><div class="field"><label>นักเรียน *</label><select class="input" id="af-student"><option value="">— เลือก —</option></select></div>'
-      +'<div class="field"><label>ประเภทกิจกรรม</label><select class="input" id="af-type">'+types.map(function(t){return '<option value="'+t.key+'">'+esc(t.label)+'</option>';}).join('')+'</select></div>'
-      +fld('ชื่อกิจกรรม *','af-title','')
-      +'<div class="form-grid">'+fld('จำนวนชั่วโมง *','af-hours','','number')+fld('วันที่','af-date',TH.iso(new Date()),'date')+'</div>'
-      +fld('สถานที่','af-loc','')+'</div>'
-      +'<div class="modal-foot"><button class="btn btn-ghost" data-close>ยกเลิก</button><button class="btn btn-primary" data-state="idle" id="af-save"><span class="st st-idle"><i class="bi bi-check-lg"></i> บันทึก</span></button></div>',
-      onMount:function(bd){
-        call('student.list',{size:500}).then(function(d){$('#af-student',bd).innerHTML='<option value="">— เลือก —</option>'+d.items.map(function(s){return '<option value="'+s.id+'">'+esc(s.full_name+' ('+s.class_label+')')+'</option>';}).join('');});
-        $('#af-save',bd).addEventListener('click',function(){
-          var p={student_id:val('af-student'),activity_type:val('af-type'),title:val('af-title'),hours:val('af-hours'),activity_date:val('af-date'),location:val('af-loc')};
-          if(!p.student_id||!p.title||!(Number(p.hours)>0)){A.err('กรอกข้อมูลไม่ครบ','ต้องมีนักเรียน ชื่อกิจกรรม และชั่วโมง');return;}
-          A.run(this,{loading:'กำลังบันทึก…'},function(){return call('act.save',p);}).then(function(){A.ok('บันทึกสำเร็จ','');A.closeModal();Routes['#/activities']();}).catch(function(){});
-        });
-      }
-    });
-  }
-
   /* ── ปฏิทินกิจกรรม ── */
   function eventCardBig(e){
     var edit=can('event.manage');
@@ -941,7 +874,7 @@
       +'<div class="modal-body">'+fld('ชื่อกิจกรรม *','ev-title',e.title)
       +'<div class="form-grid"><div class="field"><label>ประเภท</label><select class="input" id="ev-type">'+Object.keys(types).map(function(k){return '<option value="'+k+'" '+sel(e.event_type,k)+'>'+esc(types[k].label)+'</option>';}).join('')+'</select></div>'
       +fld('วันที่ *','ev-date',e.event_date||TH.iso(new Date()),'date')+fld('เวลา','ev-time',e.time)+fld('สถานที่','ev-loc',e.location)+'</div>'
-      +'<div class="field"><label>กลุ่มเป้าหมาย</label><select class="input" id="ev-target"><option value="all" '+sel(e.target_role,'all')+'>ทุกคน</option><option value="student" '+sel(e.target_role,'student')+'>นักเรียน</option><option value="homeroom" '+sel(e.target_role,'homeroom')+'>ครูประจำชั้น</option><option value="teacher" '+sel(e.target_role,'teacher')+'>ครูผู้สอน</option></select></div>'
+      +'<div class="field"><label>กลุ่มเป้าหมาย</label><select class="input" id="ev-target"><option value="all" '+sel(e.target_role,'all')+'>ทุกคน</option><option value="teacher" '+sel(e.target_role,'teacher')+'>ครูผู้สอน</option></select></div>'
       +'<div class="field full"><label>รายละเอียด</label><textarea class="input" id="ev-desc">'+esc(e.description||'')+'</textarea></div></div>'
       +'<div class="modal-foot">'+(e.id?'<button class="btn btn-danger" id="ev-del"><i class="bi bi-trash"></i></button>':'')+'<button class="btn btn-ghost" data-close>ยกเลิก</button><button class="btn btn-primary" data-state="idle" id="ev-save"><span class="st st-idle"><i class="bi bi-check-lg"></i> บันทึก</span></button></div>',
       onMount:function(bd){
@@ -955,22 +888,10 @@
     });
   }
 
-  /* ── ชั่วโมงกิจกรรมของฉัน (นักเรียน) ── */
-  Routes['#/me-activities']=function(){
-    setTitle('ชั่วโมงกิจกรรม','กิจกรรมพัฒนาผู้เรียนของฉัน');
-    Promise.all([loadExMeta(),call('act.summary',{}),call('act.list',{})]).then(function(r){
-      var sm=r[1];var list=r[2].items;var types=Store.__exMeta.activity_types;
-      page().innerHTML=hero({pill:'ข้อมูลของฉัน',pill_icon:'heart-fill',title:'ชั่วโมงกิจกรรมของฉัน',sub:'กิจกรรมพัฒนาผู้เรียนและจิตอาสา',deco:'heart',kpis:[{icon:'clock-history',value:num(sm.total),label:'ชั่วโมงรวม'},{icon:'list-check',value:num(sm.count),label:'จำนวนกิจกรรม'}]})
-      +'<div class="card mb"><div class="card-h"><h3><i class="bi bi-bar-chart-fill"></i> ชั่วโมงตามประเภท</h3></div>'+A.bars(types.map(function(t){return {label:t.label.split('/')[0],value:sm.byType[t.key]||0,suffix:' ชม.'};}))+'</div>'
-      +'<div class="card"><div class="card-h"><h3><i class="bi bi-card-list"></i> ประวัติกิจกรรม</h3></div>'+(list.length?list.map(function(a){return '<div class="flex items-center gap" style="padding:9px 0;border-bottom:1px solid var(--cream-3)"><span class="badge b-gold">'+a.hours+' ชม.</span><div class="grow"><b style="font-family:var(--font);font-size:13.5px">'+esc(a.title)+'</b><div class="muted" style="font-size:12px">'+esc(a.type_label)+' · '+TH.date(a.activity_date)+'</div></div></div>';}).join(''):A.empty('heart','ยังไม่มีกิจกรรม',''))+'</div>';
-    });
-  };
-
   /* ── small helpers (form) ─────────────────────────────────── */
   function fld(label,id,v,type){return '<div class="field"><label>'+esc(label)+'</label><input class="input" id="'+id+'" type="'+(type||'text')+'" value="'+esc(v==null?'':v)+'"></div>';}
   function sel(cur,v){return String(cur)===String(v)?'selected':'';}
   function val(id){var el=$('#'+id);return el?el.value:'';}
   function money(n){return Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:2});}
-
 })();
 </script>
