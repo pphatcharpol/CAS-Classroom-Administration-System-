@@ -2,9 +2,9 @@
  * ═══════════════════════════════════════════════════════════════
  *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
  *  File:        04_Api.gs — Universal API endpoint · single-shot boot · dispatch map
- *  Version:     1.0.0
+ *  Version:     0.0.1
  *  Last Update: 2026-05-30
- *  Developer:   ครูวิรัตน์  หาดคำ · www.kruwirat.com
+ *  Developer:   ครูที
  *  License:     Proprietary · © 2026
  * ═══════════════════════════════════════════════════════════════
  *  Client เรียกผ่าน google.script.run.api(action, payloadJson, token)
@@ -41,9 +41,9 @@ function api(action, payloadJson, token) {
   }
 }
 
+// ... (ส่วนบนเหมือนเดิม)
 function API_dispatch_(action, user, p, token) {
   switch (action) {
-    /* ── Public / Auth ── */
     case 'ping':            return { pong: true, version: APP.VERSION };
     case 'app.boot_all':    return App_bootAll(token, p);
     case 'auth.login':      return Auth_login(p.username, p.password, p.user_agent);
@@ -52,17 +52,14 @@ function API_dispatch_(action, user, p, token) {
     case 'auth.change_pw':  return Auth_changePassword(user, p.old_pw, p.new_pw);
     case 'auth.reset_pw':   return Auth_resetPassword(user, p.user_id, p.new_pw);
 
-    /* ── Dashboard / Reports ── */
     case 'dash.summary':    return Dash_summary(user, p);
     case 'report.overview': return Report_overview(user, p);
     case 'audit.list':      return Audit_list(user, p);
 
-    /* ── Classes ── */
     case 'class.list':      return Class_list(user, p);
     case 'class.save':      return Class_save(user, p);
     case 'class.delete':    return Class_delete(user, p);
 
-    /* ── Students ── */
     case 'student.list':    return Student_list(user, p);
     case 'student.get':     return Student_get(user, p);
     case 'student.save':    return Student_save(user, p);
@@ -70,20 +67,16 @@ function API_dispatch_(action, user, p, token) {
     case 'student.move':    return Student_moveClass(user, p);
     case 'student.bulk_import': return Student_bulkImport(user, p);
 
-    /* ── Users / Profile ── */
     case 'user.list':       return User_list(user, p);
     case 'user.save':       return User_save(user, p);
     case 'user.delete':     return User_delete(user, p);
     case 'profile.update':  return Profile_update(user, p);
 
-    /* ── Attendance ── */
     case 'att.sheet':       return Att_sheet(user, p);
     case 'att.save':        return Att_save(user, p);
     case 'att.summary':     return Att_summary(user, p);
     case 'att.history':     return Att_history(user, p);
 
-
-    /* ── Home visits (กสศ.01) ── */
     case 'visit.meta':      return Visit_meta();
     case 'visit.list':      return Visit_list(user, p);
     case 'visit.get':       return Visit_get(user, p);
@@ -91,26 +84,16 @@ function API_dispatch_(action, user, p, token) {
     case 'visit.delete':    return Visit_delete(user, p);
     case 'visit.overview':  return Visit_overview(user, p);
 
-    /* ── บริหารห้องเรียน (เวร/กรรมการ/ผังที่นั่ง/ตารางเรียน) ── */
     case 'classroom.meta':   return Classroom_meta();
-
     case 'timetable.get':    return Timetable_get(user, p);
     case 'timetable.save':   return Timetable_save(user, p);
-    case 'classroom.mine':   return Classroom_mine(user);
-
-    /* ── เงินกิจกรรม · กิจกรรมพัฒนาผู้เรียน · ปฏิทิน (ชุด D) ── */
+    
     case 'extra.meta':       return Extra_meta();
-    case 'act.list':         return Act_list(user, p);
-    case 'act.save':         return Act_save(user, p);
-    case 'act.delete':       return Act_delete(user, p);
-    case 'act.summary':      return Act_studentSummary(user, p);
-    case 'act.overview':     return Act_overview(user, p);
     case 'event.list':       return Event_list(user, p);
     case 'event.upcoming':   return Event_upcoming(user, p);
     case 'event.save':       return Event_save(user, p);
     case 'event.delete':     return Event_delete(user, p);
 
-    /* ── Announcements ── */
     case 'announce.list':   return Announce_list(user, p);
     case 'announce.save':   return Announce_save(user, p);
     case 'announce.view':   return Announce_view(user, p);
@@ -120,7 +103,6 @@ function API_dispatch_(action, user, p, token) {
   }
 }
 
-/* ════════ Single-shot boot — public bundle (cached) + user (fresh) ══ */
 function App_bootAll(token, p) {
   var ver = _ver_('public');
   var publicBundle = _cacheGet_('app:public:v' + ver);
@@ -130,13 +112,11 @@ function App_bootAll(token, p) {
       app: { name: APP.NAME, short: APP.SHORT, title: APP.TITLE, version: APP.VERSION,
              last_updated: APP.LAST_UPDATED, org: s.school_name, logo_icon: APP.LOGO_ICON,
              description: APP.DESCRIPTION },
-      dev: APP.DEV,
-      settings: s,
+      dev: APP.DEV, settings: s,
       roles: ROLE_LABEL, role_icons: ROLE_ICON,
       statuses: STATUS_LABEL, att_status: ATT_STATUS,
-      grade_bands: GRADE_BAND_LABEL, conduct_base: CONDUCT_BASE,
-      announce_cats: ANNOUNCE_CATS, conduct_cats: CONDUCT_CATS,
-      risk_label: RISK_LABEL, econ_label: ECON_LABEL, bmi_label: BMI_LABEL
+      grade_bands: GRADE_BAND_LABEL, announce_cats: ANNOUNCE_CATS, 
+      risk_label: RISK_LABEL, econ_label: ECON_LABEL 
     };
     _cachePut_('app:public:v' + ver, publicBundle, 300);
   }
@@ -152,11 +132,8 @@ function App_bootAll(token, p) {
   return out;
 }
 
-/* ════════ Dashboard summary — รวม KPI ตามบทบาทใน 1 call ═══════════ */
 function Dash_summary(user, p) {
   var out = { role: user.role, generated_at: cfg_now_() };
-
-  // admin / homeroom / teacher
   var scope = Auth_classScope_(user);
   var students = DB_readAll(SHEETS.STUDENTS).filter(function (s) {
     if (s.status !== 'active') return false;
@@ -175,14 +152,12 @@ function Dash_summary(user, p) {
   };
   if (user.role === 'admin') {
     var users = DB_readAll(SHEETS.USERS).filter(function (u) { return u.status === 'active'; });
-    out.kpi.teachers = users.filter(function (u) { return u.role === 'homeroom' || u.role === 'teacher'; }).length;
+    out.kpi.teachers = users.filter(function (u) { return u.role === 'teacher'; }).length;
     out.kpi.users = users.length;
   }
   out.attendance = Att_summary(user, { from: p && p.from, to: p && p.to });
-
   out.visit = Visit_overview(user, {});
   
-  if (Auth_can_(user, 'activity.view')) { try { out.activity = Act_overview(user, {}); } catch (e) {} }
   if (Auth_can_(user, 'event.view')) { try { out.events = Event_upcoming(user, { limit: 5 }); } catch (e) {} }
   out.announcements = Announce_list(user, {}).items.slice(0, 5);
   out.classes = Class_list(user, {}).items.slice(0, 8);
