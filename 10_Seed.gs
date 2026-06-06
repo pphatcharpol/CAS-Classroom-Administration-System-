@@ -1,162 +1,368 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
- *  File:        11_Menu.gs — Sheet Menu UI · Initialize · Seed · Warm trigger · About
- *  Version:     0.0.1
- *  Last Update: 2026-05-30
- *  Developer:   ครูที
- *  License:     Proprietary · © 2026
+ * CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
+ * File:        10_Seed.gs — นำเข้าข้อมูลจริง (ครู · ชั้นเรียน · นักเรียน)
+ * Version:     1.0.1
+ * Last Update: 2026-06-05
+ * Developer:   ครูที (Updated for specific school data)
  * ═══════════════════════════════════════════════════════════════
  */
 
-function onOpen() {
-  try {
-    SpreadsheetApp.getUi()
-      .createMenu('🎯 ' + APP.SHORT)
-      .addItem('🚀 เริ่มใช้งานระบบ (Initialize)', 'menu_initSystem')
-      .addItem('🔐 ขออนุญาตสิทธิ์ (Grant)', 'menu_grantPermissions')
-      .addItem('🔍 ตรวจสถานะระบบ (Diagnostic)', 'menu_diagnostic')
-      .addSeparator()
-      .addItem('🌱 เพิ่มข้อมูลตัวอย่าง', 'menu_seedDemo')
-      .addItem('🧹 ล้างข้อมูลทั้งหมด', 'menu_clearAll')
-      .addSeparator()
-      .addItem('🔥 ติดตั้ง Warm Trigger', 'menu_installWarm')
-      .addItem('❄️ ถอด Warm Trigger', 'menu_uninstallWarm')
-      .addSeparator()
-      .addItem('🔗 เปิด Web App URL', 'menu_openWebApp')
-      .addItem('📋 คัดลอก Web App URL', 'menu_copyWebAppUrl')
-      .addSeparator()
-      .addItem('ℹ️ เกี่ยวกับระบบ (About)', 'menu_about')
-      .addToUi();
-  } catch (e) {}
-}
+var SEED = {
+  blood: ['A', 'B', 'O', 'AB'],
+  villages: ['บางกระทุ่ม', 'วังน้ำคู้', 'บ้านใหม่', 'แสนสุข'],
+};
 
-function menu_initSystem() {
-  var ui = SpreadsheetApp.getUi();
+function _rand_(a) { return a[Math.floor(Math.random() * a.length)]; }
+function _randInt_(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+
+function Seed_run() {
   DB_ensureAll();
-  // สร้างแอดมินถ้ายังไม่มี
-  var hasAdmin = DB_readAll(SHEETS.USERS).some(function (u) { return u.role === 'admin' && u.status === 'active'; });
-  if (!hasAdmin) {
-    Seed_user_('admin', 'admin', 'admin', 'ผู้ดูแลระบบ', 'นาย');
-  }
-  Settings_set('school_name', Settings_get('school_name', APP.ORG));
-  Settings_set('academic_year', Settings_get('academic_year', cfg_academicYear_()));
-  try { Files_rootFolder_(); } catch (e) {}
-  ui.alert('✅ เริ่มใช้งานระบบสำเร็จ',
-    'สร้างชีตฐานข้อมูลครบ ' + Object.keys(SHEETS).length + ' ตาราง\n\n' +
-    (hasAdmin ? 'พบบัญชีผู้ดูแลระบบเดิม' : 'สร้างบัญชีผู้ดูแลระบบ:\n  • ชื่อผู้ใช้: admin\n  • รหัสผ่าน: admin') +
-    '\n\nขั้นต่อไป: กด "เพิ่มข้อมูลตัวอย่าง" แล้ว Deploy เป็น Web App',
-    ui.ButtonSet.OK);
-}
-
-function menu_grantPermissions() {
-  // เรียก service ที่ต้องใช้ scope เพื่อ trigger OAuth consent
-  DriveApp.getRootFolder(); CacheService.getScriptCache(); PropertiesService.getScriptProperties();
-  ScriptApp.getProjectTriggers();
-  SpreadsheetApp.getUi().alert('✅ อนุญาตสิทธิ์ครบถ้วนแล้ว', 'ระบบพร้อมเข้าถึง Sheets · Drive · Cache · Triggers', SpreadsheetApp.getUi().ButtonSet.OK);
-}
-
-function menu_diagnostic() {
-  var lines = [];
-  Object.keys(SHEETS).forEach(function (k) {
-    var sh = cfg_ss_().getSheetByName(SHEETS[k]);
-    lines.push((sh ? '✔' : '✘') + ' ' + SHEETS[k] + ' — ' + (sh ? (Math.max(0, sh.getLastRow() - 1) + ' แถว') : 'ยังไม่สร้าง'));
-  });
-  var warm = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === '_warm_'; });
-  lines.push('');
-  lines.push('Warm trigger: ' + (warm ? 'ทำงาน 🔥' : 'ยังไม่ติดตั้ง'));
-  try { lines.push('โฟลเดอร์ไฟล์: ' + Files_rootFolder_().getName()); } catch (e) { lines.push('โฟลเดอร์ไฟล์: (ยังไม่สร้าง)'); }
-  SpreadsheetApp.getUi().alert('🔍 สถานะระบบ', lines.join('\n'), SpreadsheetApp.getUi().ButtonSet.OK);
-}
-
-function menu_seedDemo() {
-  var ui = SpreadsheetApp.getUi();
-  var res = ui.alert('🌱 เพิ่มข้อมูลตัวอย่าง', 'จะล้างข้อมูลเดิม (ยกเว้นการตั้งค่า) แล้วสร้างข้อมูลตัวอย่างใหม่\n\nดำเนินการต่อหรือไม่?', ui.ButtonSet.YES_NO);
-  if (res !== ui.Button.YES) return;
-  var msg = Seed_run();
-  
-  // อัปเดตข้อความตรงนี้ให้ตรงกับข้อมูลที่ Seed เข้าไป
-  ui.alert('✅ สำเร็จ', msg + '\n\nบัญชีทดสอบ:\n  • admin / 123456 (ผู้ดูแลระบบ)\n  • t1 / 123456 (ครูที่ปรึกษา ม.1/1)\n  • t2 / 123456 (ครูผู้สอน)', ui.ButtonSet.OK);
-}
-
-function menu_clearAll() {
-  var ui = SpreadsheetApp.getUi();
-  var res = ui.alert('🧹 ล้างข้อมูลทั้งหมด', 'ลบข้อมูลทุกตาราง (รวมการตั้งค่า) — ไม่สามารถย้อนกลับได้\n\nยืนยันหรือไม่?', ui.ButtonSet.YES_NO);
-  if (res !== ui.Button.YES) return;
-  Seed_clear_(true);
-  ui.alert('✅ ล้างข้อมูลเรียบร้อย', 'กด "เริ่มใช้งานระบบ" เพื่อสร้างบัญชีผู้ดูแลใหม่', ui.ButtonSet.OK);
-}
-
-/* ── Warm trigger (กัน cold start) ───────────────────────────────── */
-function _warm_() {
+  DB_beginBatch();   // ★ batch mode — flush + version bump ครั้งเดียวตอนจบ
   try {
-    _resetReq_();
-    DB_readAll(SHEETS.SETTINGS);
-    DB_readAll(SHEETS.CLASSES);
-    DB_readAll(SHEETS.STUDENTS);   // ชีตใหญ่/ใช้บ่อยสุด — อุ่น cache ไว้ก่อน
-    App_bootAll('', {});           // อุ่น public bundle ใน CacheService
-  } catch (e) {}
-  return new Date().toISOString();
-}
-function menu_installWarm() {
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === '_warm_') ScriptApp.deleteTrigger(t); });
-  ScriptApp.newTrigger('_warm_').timeBased().everyMinutes(5).create();
-  SpreadsheetApp.getUi().alert('🔥 ติดตั้ง Warm Trigger สำเร็จ', 'ระบบจะอุ่นเครื่องทุก 5 นาที ป้องกัน cold start', SpreadsheetApp.getUi().ButtonSet.OK);
-}
-function menu_uninstallWarm() {
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === '_warm_') ScriptApp.deleteTrigger(t); });
-  SpreadsheetApp.getUi().alert('❄️ ถอด Warm Trigger แล้ว', '', SpreadsheetApp.getUi().ButtonSet.OK);
+    Seed_clear_(false);
+
+    // ── Settings ──
+    Settings_set('school_name', APP.ORG);
+    Settings_set('school_motto', APP.MOTTO);
+    Settings_set('academic_year', cfg_academicYear_());
+
+    var year = cfg_academicYear_();
+// ── 1. STAFF (ผู้บริหารและครู) ──
+    var STAFF = [
+      { u: 't1', pw: '123456', name: 'นายสุขุมพัฒน์ กันธะมา', role: 'teacher', level: 'ม.1', room: '1', title: 'นาย' },
+      { u: 't2', pw: '123456', name: 'นายจตุรภัทร บัวสถิตย์', role: 'teacher', level: 'ม.1', room: '1', title: 'นาย' },
+      { u: 't3', pw: '123456', name: 'นางสาวชนิกานต์ กลิ่นอาจ', role: 'teacher', level: 'ม.2', room: '1', title: 'นางสาว' },
+      { u: 't4', pw: '123456', name: 'นางสาวจันทร์ทิมา ทองแฟง', role: 'teacher', level: 'ม.2', room: '2', title: 'นางสาว' },
+      { u: 't5', pw: '123456', name: 'นางสาวจารุวรรณ คุ้มขำ', role: 'teacher', level: 'ม.2', room: '2', title: 'นางสาว' },
+      { u: 't6', pw: '123456', name: 'นายวัชระ ตะมาแก้ว', role: 'teacher', level: 'ม.3', room: '1', title: 'นาย' },
+      { u: 't7', pw: '123456', name: 'นางสาวสุทธิดา สุทธิ', role: 'teacher', level: 'ม.3', room: '2', title: 'นางสาว' },
+      { u: 't8', pw: '123456', name: 'ว่าที่ร้อยตรีหญิงชลธิชา สีหามาตย์', role: 'teacher', level: 'ม.3', room: '2', title: 'ว่าที่ร้อยตรีหญิง' },
+      { u: 't9', pw: '123456', name: 'นางสาวรัตน์ชนิดา อิ่มอ่อง', role: 'teacher', level: 'ม.4', room: '1', title: 'นางสาว' },
+      { u: 't10', pw: '123456', name: 'นางสายธาร หิรัญสุข', role: 'teacher', level: 'ม.4', room: '1', title: 'นาง' },
+      { u: 't11', pw: '123456', name: 'นางกมลวรรณ บรรดาสุข', role: 'teacher', level: 'ม.5', room: '1', title: 'นาง' },
+      { u: 't12', pw: '123456', name: 'นายมหาชัย นุ่มมาก', role: 'teacher', level: 'ม.5', room: '1', title: 'นาย' },
+      { u: 't13', pw: '123456', name: 'นางนิภาพรรณ ฤกษ์สว่าง', role: 'teacher', level: 'ม.6', room: '1', title: 'นาง' },
+      { u: 'admin', pw: '123456', name: 'ผอ.มนูญ บุบผาพ่วง', role: 'admin', level: '', room: '', title: 'ผอ.' },
+      { u: 'admin2', pw: '123456', name: 'นางสาวลัคกี้ ธงชัย', role: 'admin', level: '', room: '', title: 'นางสาว' }
+    ];
+    var teacherMap = {}; 
+    var adminU = null;
+
+    STAFF.forEach(function(st) {
+      var cleanName = st.name.replace(st.title, '').trim();
+      var u = Seed_user_(st.u, st.pw, st.role, cleanName, st.title);
+      // เปลี่ยนจาก st.role === 'homeroom' เป็น st.level && st.room เพื่อจับคู่ครูที่ปรึกษาเข้ากับห้อง
+      if (st.level && st.room) {
+        teacherMap[st.level + '/' + st.room] = u.id;
+      }
+      if (st.role === 'admin' && !adminU) adminU = u;
+    });
+
+    // ── 2. CLASSES (ชั้นเรียน) ──
+    var CLASS_DEFS = [
+      { level: 'ม.1', room: '1', color: '#1565C0' },
+      { level: 'ม.2', room: '1', color: '#2E7D32' },
+      { level: 'ม.2', room: '2', color: '#2E7D32' },
+      { level: 'ม.3', room: '1', color: '#C9A227' },
+      { level: 'ม.3', room: '2', color: '#C9A227' },
+      { level: 'ม.4', room: '1', color: '#D84315' },
+      { level: 'ม.5', room: '1', color: '#6A1B9A' },
+      { level: 'ม.6', room: '1', color: '#00838F' }
+    ];
+
+    var classIdMap = {};
+    CLASS_DEFS.forEach(function(c) {
+      var key = c.level + '/' + c.room;
+      var inserted = DB_insert(SHEETS.CLASSES, {
+        academic_year: year, level: c.level, room: c.room,
+        grade_band: cfg_gradeBand_(c.level),
+        homeroom_teacher_id: teacherMap[key] || '',
+        capacity: 40, color: c.color, note: '', status: 'active'
+      });
+      classIdMap[key] = inserted.id;
+    });
+
+    // ── 3. STUDENTS (นักเรียนทั้งหมด) ──
+    var RAW_STUDENTS = [
+      // ม.1.1
+      ['5620', 'เด็กชาย', 'ชูเกียรติ', 'สิงห์พราม', 'ม.1', '1', 1],
+      ['5621', 'เด็กชาย', 'ณรินธร', 'แห้วเหมือน', 'ม.1', '1', 2],
+      ['5622', 'เด็กชาย', 'ณัฐภาส', 'ใยทา', 'ม.1', '1', 3],
+      ['5623', 'เด็กชาย', 'ตรีโลจน์', 'บุญธรรม', 'ม.1', '1', 4],
+      ['5624', 'เด็กชาย', 'เตชพัฒน์', 'วงษาเนาว์', 'ม.1', '1', 5],
+      ['5625', 'เด็กชาย', 'เตชภณ', 'ฉายเเสง', 'ม.1', '1', 6],
+      ['5626', 'เด็กชาย', 'ธนพล', 'เสือเปรม', 'ม.1', '1', 7],
+      ['5627', 'เด็กชาย', 'ธนาพล', 'เสือเปรม', 'ม.1', '1', 8],
+      ['5628', 'เด็กชาย', 'ธีร์ธนิก', 'สำราญจริง', 'ม.1', '1', 9],
+      ['5629', 'เด็กชาย', 'นวรัตน์', 'บุญมาก', 'ม.1', '1', 10],
+      ['5630', 'เด็กชาย', 'ปิยวัชร์', 'อินสลุด', 'ม.1', '1', 11],
+      ['5631', 'เด็กชาย', 'พงศ์ปณต', 'คำนวนพื้น', 'ม.1', '1', 12],
+      ['5632', 'เด็กชาย', 'พลภ', 'ชุ่มสถิตย์', 'ม.1', '1', 13],
+      ['5633', 'เด็กชาย', 'ภูมิพัฒน์', 'อินศรีชื่น', 'ม.1', '1', 14],
+      ['5634', 'เด็กชาย', 'ศุภนิมิต', 'เเก้วดวงเล็ก', 'ม.1', '1', 15],
+      ['5649', 'เด็กชาย', 'กฤตบุญ', 'จันทร์ณรงค์', 'ม.1', '1', 16],
+      ['5635', 'เด็กหญิง', 'เบญจวรรณ', 'แก้วเอี่ยม', 'ม.1', '1', 17],
+      ['5636', 'เด็กหญิง', 'ปาริชาติ', 'มามี', 'ม.1', '1', 18],
+      ['5637', 'เด็กหญิง', 'มนปริยา', 'บุญมีอนุภาพ', 'ม.1', '1', 19],
+      ['5638', 'เด็กหญิง', 'มัทธนา', 'มากหาดตะกู', 'ม.1', '1', 20],
+      ['5639', 'เด็กหญิง', 'โยษิตา', 'ดาสี', 'ม.1', '1', 21],
+      ['5640', 'เด็กหญิง', 'สุรัตน์สวดี', 'ทองเกิด', 'ม.1', '1', 22],
+      // ม.2.1
+      ['5564', 'เด็กชาย', 'กฤตติเดช', 'ท้วมงาม', 'ม.2', '1', 1],
+      ['5566', 'เด็กชาย', 'จิรายุ', 'เรื่อศรีจันทร์', 'ม.2', '1', 2],
+      ['5569', 'เด็กชาย', 'ธนกฤต', 'ชำนาญป่า', 'ม.2', '1', 3],
+      ['5570', 'เด็กชาย', 'นภัสดล', 'กําลังเหลือ', 'ม.2', '1', 4],
+      ['5573', 'เด็กชาย', 'พิตรพิบูล', 'จูนก', 'ม.2', '1', 5],
+      ['5578', 'เด็กชาย', 'อัทธเมศ', 'รุ่งเริก', 'ม.2', '1', 6],
+      ['5579', 'เด็กชาย', 'อิทธิกร', 'นิ่มนวล', 'ม.2', '1', 7],
+      ['5614', 'เด็กชาย', 'ภุชคินทร์', 'วงษาเนาว์', 'ม.2', '1', 8],
+      ['5582', 'เด็กหญิง', 'ขวัญข้าว', 'ฟักเงิน', 'ม.2', '1', 9],
+      ['5583', 'เด็กหญิง', 'ณปภัช', 'เศวตดิษ', 'ม.2', '1', 10],
+      ['5584', 'เด็กหญิง', 'ณัฐธิดา', 'ท้วมเพ็ง', 'ม.2', '1', 11],
+      ['5586', 'เด็กหญิง', 'นาตาลี', 'เพ็ชร์สิน', 'ม.2', '1', 12],
+      ['5588', 'เด็กหญิง', 'บุญญาพร', 'ยุดสูงเนิน', 'ม.2', '1', 13],
+      ['5595', 'เด็กหญิง', 'รินรดา', 'นาคทรัพย์', 'ม.2', '1', 14],
+      ['5597', 'เด็กหญิง', 'ศิริมาลา', 'เรืองศรี', 'ม.2', '1', 15],
+      ['5598', 'เด็กหญิง', 'สุปรีดา', 'ขำอ่ำ', 'ม.2', '1', 16],
+      ['5599', 'เด็กหญิง', 'สุภัสสร', 'ตรงต่อกิจ', 'ม.2', '1', 17],
+      ['5600', 'เด็กหญิง', 'อังคณา', 'ธุวนติ', 'ม.2', '1', 18],
+      ['5616', 'เด็กหญิง', 'สุพิชชา', 'บุญแท้', 'ม.2', '1', 19],
+      // ม.2.2
+      ['5567', 'เด็กชาย', 'เดโชชัย', 'พงศ์หิรัญ', 'ม.2', '2', 1],
+      ['5568', 'เด็กชาย', 'เทพไท', 'โพธิ์ทอง', 'ม.2', '2', 2],
+      ['5572', 'เด็กชาย', 'พิชิตพล', 'เจียงผู่', 'ม.2', '2', 3],
+      ['5575', 'เด็กชาย', 'ศรัณย์', 'พันฤทธิ์', 'ม.2', '2', 4],
+      ['5576', 'เด็กชาย', 'ศุภณัฐ', 'มาชื่น', 'ม.2', '2', 5],
+      ['5577', 'เด็กชาย', 'อภิวิชญ์', 'เผือกอ่อน', 'ม.2', '2', 6],
+      ['5612', 'เด็กชาย', 'กิตติพัฒน์', 'ค่ำคูณ', 'ม.2', '2', 7],
+      ['5581', 'เด็กหญิง', 'กัลยารัตน์', 'อาจบัว', 'ม.2', '2', 8],
+      ['5587', 'เด็กหญิง', 'นิรมล', 'ม่วงอ่อง', 'ม.2', '2', 9],
+      ['5589', 'เด็กหญิง', 'ปวีนา', 'มามี', 'ม.2', '2', 10],
+      ['5590', 'เด็กหญิง', 'ปิ่นฟ้านภา', 'ราชอ่อนศรี', 'ม.2', '2', 11],
+      ['5592', 'เด็กหญิง', 'มณีรัตน์', 'บุญเเท้', 'ม.2', '2', 12],
+      ['5593', 'เด็กหญิง', 'มาตาลีย์', 'บุญธรรม', 'ม.2', '2', 13],
+      ['5596', 'เด็กหญิง', 'วิลาสินี', 'เทแก้ว', 'ม.2', '2', 14],
+      ['5611', 'เด็กหญิง', 'วันวิสา', 'อาศัยกร', 'ม.2', '2', 15],
+      // ม.3.1
+      ['5515', 'เด็กชาย', 'จักรกฤษ', 'ชูสิงห์', 'ม.3', '1', 1],
+      ['5517', 'เด็กชาย', 'ประกาสิต', 'อยู่ดี', 'ม.3', '1', 2],
+      ['5518', 'เด็กชาย', 'พุทธิพงศ์', 'พุ่มระหงษ์', 'ม.3', '1', 3],
+      ['5519', 'เด็กชาย', 'วริทธิ์ณันท์', 'ขวัญอยู่', 'ม.3', '1', 4],
+      ['5520', 'เด็กชาย', 'วีระภัทร', 'โพธิ์สุรินทร์', 'ม.3', '1', 5],
+      ['5521', 'เด็กชาย', 'ศตวรรษ', 'กลับน่วม', 'ม.3', '1', 6],
+      ['5522', 'เด็กชาย', 'ศตวรรษ', 'แทนงิ้ว', 'ม.3', '1', 7],
+      ['5523', 'เด็กชาย', 'สุวโรจน์', 'มั่นคง', 'ม.3', '1', 8],
+      ['5619', 'เด็กชาย', 'อานนท์', 'ชัยชนะ', 'ม.3', '1', 9],
+      ['5525', 'เด็กหญิง', 'ณัฐณิชา', 'สมาทอง', 'ม.3', '1', 10],
+      ['5526', 'เด็กหญิง', 'ดวงกมล', 'คงปราโมทย์', 'ม.3', '1', 11],
+      ['5527', 'เด็กหญิง', 'นันทวัน', 'ปุ้ยเสาธง', 'ม.3', '1', 12],
+      ['5528', 'เด็กหญิง', 'พรรณิษา', 'วงษ์วิหก', 'ม.3', '1', 13],
+      ['5529', 'เด็กหญิง', 'รุ้งสินี', 'ดีรักษา', 'ม.3', '1', 14],
+      ['5608', 'เด็กหญิง', 'จารุวรรณ', 'รัตนา', 'ม.3', '1', 15],
+      // ม.3.2
+      ['5533', 'เด็กชาย', 'ชลากร', 'ฟักมา', 'ม.3', '2', 1],
+      ['5534', 'เด็กชาย', 'ณัฏฐ์', 'คำนวนพื้น', 'ม.3', '2', 2],
+      ['5535', 'เด็กชาย', 'ธนกร', 'มากบ้านบึง', 'ม.3', '2', 3],
+      ['5537', 'เด็กชาย', 'ธันวา', 'อินเหล็ง', 'ม.3', '2', 4],
+      ['5538', 'เด็กชาย', 'นันทร์นทรี', 'สาวใส', 'ม.3', '2', 5],
+      ['5539', 'เด็กชาย', 'พงศ์พัฒนะ', 'จุ่นพันธุ์', 'ม.3', '2', 6],
+      ['5540', 'เด็กชาย', 'พัชรพล', 'เรืองศิริ', 'ม.3', '2', 7],
+      ['5541', 'เด็กชาย', 'พันธ์กานต์', 'รุ่งศิริปัญญา', 'ม.3', '2', 8],
+      ['5542', 'เด็กชาย', 'พิชชากร', 'เหมือนสังดี', 'ม.3', '2', 9],
+      ['5543', 'เด็กชาย', 'รัชนาท', 'จำปาทอง', 'ม.3', '2', 10],
+      ['5544', 'เด็กชาย', 'อดิเรก', 'รุ่งเริก', 'ม.3', '2', 11],
+      ['5545', 'เด็กชาย', 'อภิชาญชัย', 'โพธิ์ทอง', 'ม.3', '2', 12],
+      ['5547', 'เด็กหญิง', 'จันทกานต์', 'อ่อนนุ่ม', 'ม.3', '2', 13],
+      ['5548', 'เด็กหญิง', 'ณัฐกานต์', 'ช่วยคิด', 'ม.3', '2', 14],
+      ['5549', 'เด็กหญิง', 'วาสนา', 'เขียวขำ', 'ม.3', '2', 15],
+      ['5550', 'เด็กหญิง', 'สุธิรยา', 'ปานผา', 'ม.3', '2', 16],
+      ['5551', 'เด็กหญิง', 'สุนิสา', 'เชิดวิรุณ', 'ม.3', '2', 17],
+      // ม.4.1
+      ['5435', 'นาย', 'อรรถกร', 'นิ่มนวล', 'ม.4', '1', 1],
+      ['5463', 'นาย', 'กิตินันท์', 'ม่วงอ่อง', 'ม.4', '1', 2],
+      ['5469', 'นาย', 'นามิ', 'มูราคามิ', 'ม.4', '1', 3],
+      ['5471', 'นาย', 'ปภังกร', 'พงศ์หิรัญ', 'ม.4', '1', 4],
+      ['5472', 'นาย', 'พนมพร', 'ทองล้น', 'ม.4', '1', 5],
+      ['5474', 'นาย', 'ภูริภัทร์', 'โทวะดี', 'ม.4', '1', 6],
+      ['5475', 'นาย', 'รชต', 'วิชฉิมพาลี', 'ม.4', '1', 7],
+      ['5476', 'นาย', 'รัชชานนท์', 'อนุกูล', 'ม.4', '1', 8],
+      ['5480', 'นาย', 'อภิรัตน์', 'ศรทรง', 'ม.4', '1', 9],
+      ['5481', 'นางสาว', 'กมลชนก', 'หงษาวงค์', 'ม.4', '1', 10],
+      ['5483', 'นางสาว', 'เจนจิรา', 'คลังเอี่ยม', 'ม.4', '1', 11],
+      ['5484', 'นางสาว', 'นรีรัตน์', 'บุญแท้', 'ม.4', '1', 12],
+      ['5488', 'นางสาว', 'พัชญ์ชิสา', 'อ่ำสำลี', 'ม.4', '1', 13],
+      ['5490', 'นางสาว', 'พิชญกานต์', 'เกิดทองสุข', 'ม.4', '1', 14],
+      ['5495', 'นางสาว', 'เสาวลักษณ์', 'อยู่ดี', 'ม.4', '1', 15],
+      ['5496', 'นางสาว', 'อพิญญา', 'ระทวย', 'ม.4', '1', 16],
+      ['5497', 'นางสาว', 'อังคนา', 'พัดพรม', 'ม.4', '1', 17],
+      ['5503', 'นางสาว', 'อมรรัตน์', 'จำลองเพลง', 'ม.4', '1', 18],
+      ['5504', 'นางสาว', 'สรสิชา', 'อุลปาทร', 'ม.4', '1', 19],
+      ['5559', 'นาย', 'ปฏิพล', 'กิจเจริญ', 'ม.4', '1', 20],
+      ['5641', 'นาย', 'กิตติธร', 'หมีบ้านใหม่', 'ม.4', '1', 21],
+      ['5642', 'นาย', 'ธนภัทร', 'อามาตหิน', 'ม.4', '1', 22],
+      ['5643', 'นาย', 'ภานุวัฒน์', 'กันทะนิ', 'ม.4', '1', 23],
+      ['5644', 'นาย', 'สุรชัย', 'เกิดแก่น', 'ม.4', '1', 24],
+      ['5645', 'นางสาว', 'นภัสรา', 'ภูมิผล', 'ม.4', '1', 25],
+      ['5646', 'นางสาว', 'อริษา', 'คล้ายท่าโรง', 'ม.4', '1', 26],
+      ['5648', 'นางสาว', 'ชัชฎาภรณ์', 'ทับทิมทอง', 'ม.4', '1', 27],
+      // ม.5.1
+      ['5409', 'นาย', 'กฤติพงศ์', 'ยิ่งยง', 'ม.5', '1', 1],
+      ['5414', 'นาย', 'แควสินธุ์', 'เชิดวิรุณห์', 'ม.5', '1', 2],
+      ['5417', 'นาย', 'ฐิติพันธุ์', 'ปาณะวงษา', 'ม.5', '1', 3],
+      ['5422', 'นาย', 'พัทรพล', 'โพธิ์ดง', 'ม.5', '1', 4],
+      ['5423', 'นาย', 'ทยาวัต', 'สายสีแก้ว', 'ม.5', '1', 5],
+      ['5426', 'นาย', 'พชรพงษ์', 'ยี่ภู่', 'ม.5', '1', 6],
+      ['5431', 'นาย', 'สิรภพ', 'คนไว', 'ม.5', '1', 7],
+      ['5434', 'นาย', 'อภิชาติ', 'ภักดีธิเบต', 'ม.5', '1', 8],
+      ['5436', 'นาย', 'อัครชัย', 'พรมทา', 'ม.5', '1', 9],
+      ['5560', 'นาย', 'ฐิติศักดิ์', 'ภักดี', 'ม.5', '1', 10],
+      ['5601', 'นาย', 'ธณกร', 'พรมภักดิ์', 'ม.5', '1', 11],
+      ['5602', 'นาย', 'นพดล', 'บัวลอย', 'ม.5', '1', 12],
+      ['5438', 'นางสาว', 'จันทร์จิรา', 'บุญรอด', 'ม.5', '1', 13],
+      ['5440', 'นางสาว', 'ณัฐชา', 'อ่ำเกตุ', 'ม.5', '1', 14],
+      ['5441', 'นางสาว', 'รัชญา', 'แสนสบาย', 'ม.5', '1', 15],
+      ['5442', 'นางสาว', 'ธรรมรส', 'ดีบูชา', 'ม.5', '1', 16],
+      ['5445', 'นางสาว', 'วรัญญา', 'โพธิ์แสนสุข', 'ม.5', '1', 17],
+      ['5446', 'นางสาว', 'อภิญญา', 'ขวัญทับทิม', 'ม.5', '1', 18],
+      ['5603', 'นางสาว', 'กรวรรณ', 'ญาติเสมอ', 'ม.5', '1', 19],
+      ['5605', 'นางสาว', 'ณัฐนิชา', 'แก้วเอี่ยม', 'ม.5', '1', 20],
+      ['5607', 'นางสาว', 'มานิตา', 'ใจกล้า', 'ม.5', '1', 21],
+      ['5648', 'นางสาว', 'หยาดทิพย์', 'ยาบุญนะ', 'ม.5', '1', 22],
+      // ม.6.1
+      ['5374', 'นาย', 'พรหมพิริยะ', 'ขำน้ำคู้', 'ม.6', '1', 1],
+      ['5385', 'นาย', 'ชนากร', 'รุนแรง', 'ม.6', '1', 2],
+      ['5553', 'นาย', 'ธนัช', 'มะเชิง', 'ม.6', '1', 3],
+      ['5378', 'นางสาว', 'ดาริน', 'แปดี', 'ม.6', '1', 4],
+      ['5384', 'นางสาว', 'สุภาทิพย์', 'โคคุ้ม', 'ม.6', '1', 5],
+      ['5393', 'นางสาว', 'ณัฐกาญ', 'รอดเครือทอง', 'ม.6', '1', 6],
+      ['5394', 'นางสาว', 'ณัฐภัสสร', 'ไชยชนะ', 'ม.6', '1', 7],
+      ['5396', 'นางสาว', 'นันทกาญ', 'ทวนทอง', 'ม.6', '1', 8],
+      ['5398', 'นางสาว', 'ศิริวรรณ', 'แหบคงเหล็ก', 'ม.6', '1', 9],
+      ['5399', 'นางสาว', 'สิริพร', 'ขำน้ำคู้', 'ม.6', '1', 10],
+      ['5500', 'นางสาว', 'ณัฐธมนวรรณ', 'ประดับวงศ์', 'ม.6', '1', 11],
+      ['5555', 'นางสาว', 'รอดเครือทอง', 'กุลพัตร์', 'ม.6', '1', 12],
+      ['5556', 'นางสาว', 'ศิรประภา', 'ใยมี', 'ม.6', '1', 13],
+      ['5557', 'นางสาว', 'ศิริกาญจน์', 'ราชวิเศษ', 'ม.6', '1', 14],
+      ['5618', 'นางสาว', 'พิมพกานต์', 'โพธิ์เงิน', 'ม.6', '1', 15]
+    ];
+
+    var studentRows = [];
+    RAW_STUDENTS.forEach(function(r) {
+      var code = String(r[0]);
+      var title = String(r[1]);
+      var fname = String(r[2]);
+      var lname = String(r[3]);
+      var lvl = String(r[4]);
+      var rm = String(r[5]);
+      var no = Number(r[6]);
+
+      var gender = (title === 'เด็กชาย' || title === 'นาย') ? 'male' : 'female';
+      var classId = classIdMap[lvl + '/' + rm];
+
+      if (!classId) return;
+
+      var sid = cfg_uid_('STU');
+      studentRows.push({
+        id: sid, student_code: code, title: title,
+        first_name: fname, last_name: lname, nickname: '',
+        class_id: classId, number: no, gender: gender,
+        birthdate: (year - 543 - _randInt_(13, 18)) + '-' + ('0' + _randInt_(1, 12)).slice(-2) + '-' + ('0' + _randInt_(1, 28)).slice(-2),
+        id_card: '1' + _randInt_(1000000000, 9999999999), blood_type: _rand_(SEED.blood),
+        address: _randInt_(1, 199) + ' หมู่ ' + _randInt_(1, 12) + ' ' + _rand_(SEED.villages), 
+        phone: '08' + _randInt_(10000000, 99999999),
+        parent_name: 'ผู้ปกครอง ' + lname, parent_relation: _rand_(['บิดา', 'มารดา', 'ผู้ปกครอง']), 
+        parent_phone: '09' + _randInt_(10000000, 99999999),
+        status: 'active' // 👈 เพิ่มบรรทัดนี้
+      });
+    });
+
+    DB_bulkInsert(SHEETS.STUDENTS, studentRows);
+
+    // ── 4. HOME VISITS (สุ่มข้อมูลเยี่ยมบ้าน กสศ. ให้ดูเสมือนจริง) ──
+    var visitRows = [];
+    studentRows.forEach(function (s) {
+      if (Math.random() < 0.4) {
+        var risk = Math.random() < 0.15 ? 'high' : (Math.random() < 0.3 ? 'medium' : 'low');
+        var size = _randInt_(3, 6), income = _randInt_(3, 30) * 1000;
+        var _o1 = function (k) { var o = {}; o[k] = true; return o; };
+        
+        var survey = { dependency: { elderly: Math.random() < 0.4, single_parent: Math.random() < 0.25, unemployed: Math.random() < 0.2 }, house_own: _rand_(['own', 'rent', 'free']), floor: _o1(_rand_(['tile', 'cement', 'plank', 'soil'])), wall: _o1(_rand_(['cement_plaster', 'plank', 'zinc'])), roof: _o1(_rand_(['metal', 'tile'])), toilet: true, farmland: _rand_(['none', 'lt1', 'r1to5']), water: _o1(_rand_(['tap', 'bottle', 'well'])), electric: 'meter', vehicles: { motorcycle: Math.random() < 0.6 }, appliances: { fridge: Math.random() < 0.7, tv: Math.random() < 0.6 } };
+        
+        var pc = Math.round(income / size);
+        var pStatus = pc <= 1000 ? 'extreme_poor' : (pc <= 3000 ? 'poor' : 'normal');
+
+        visitRows.push({
+          student_id: s.id, class_id: s.class_id,
+          visit_date: cfg_dateOnly_(new Date(Date.now() - _randInt_(5, 60) * 864e5)),
+          address: s.address, gps_lat: (13 + Math.random()).toFixed(6), gps_lng: (100 + Math.random()).toFixed(6),
+          photo_url: '', family_status: _rand_(['together', 'separated', 'divorced', 'father_dead']),
+          economic_status: _rand_(['good', 'moderate', 'poor']),
+          risk_level: risk, findings: 'สภาพแวดล้อมเหมาะสมต่อการเรียนรู้',
+          recommendation: 'ติดตามผลการเรียนอย่างต่อเนื่อง', visited_by: 'system', status: 'active',
+          academic_term: 'ภาคเรียนที่ 1/' + year, live_with: _rand_(['parents', 'relatives', 'guardian']),
+          guardian_name: s.parent_name, guardian_relation: s.parent_relation, guardian_occupation: _rand_(['เกษตรกร', 'รับจ้างทั่วไป', 'ค้าขาย', 'พนักงาน']),
+          guardian_phone: s.parent_phone, guardian_idcard: '', state_welfare: Math.random() < 0.4,
+          household_size: size, household_income: income, income_per_capita: pc, poverty_status: pStatus,
+          members_json: JSON.stringify([{ name: s.parent_name, relation: s.parent_relation, age: _randInt_(35, 55), income: income, disabled: false, chronic: false }]),
+          survey_json: JSON.stringify(survey), travel_json: JSON.stringify({ method: _rand_(['walk', 'bicycle', 'school_bus', 'own_motorcycle']), distance: _randInt_(1, 15), cost: _randInt_(0, 40) }),
+          addr_json: JSON.stringify({ house_no: _randInt_(1, 199), moo: _randInt_(1, 12), province: 'พิษณุโลก' }),
+          photos_json: JSON.stringify({}), consent: true, cct_request: true
+        });
+      }
+    });
+    DB_bulkInsert(SHEETS.HOMEVISIT, visitRows);
+
+    // ── 5. ANNOUNCEMENTS (ประกาศจำลอง) ──
+    var anns = [
+      { title: 'เปิดภาคเรียนที่ 1 ปีการศึกษา ' + (year - 543), category: 'general', pinned: true, body: 'ขอต้อนรับนักเรียนทุกคนเข้าสู่ภาคเรียนใหม่ พบกันที่โรงเรียนวันจันทร์ เวลา 08.00 น. แต่งกายชุดนักเรียนให้เรียบร้อย' },
+      { title: 'กำหนดสอบกลางภาค', category: 'exam', pinned: false, body: 'การสอบกลางภาคจะจัดขึ้นในสัปดาห์ที่ 9 ของภาคเรียน ขอให้นักเรียนเตรียมตัวอ่านหนังสือล่วงหน้า' }
+    ];
+    var annRows = anns.map(function (a) {
+      return {
+        title: a.title, body: a.body, category: a.category, target_role: 'all', target_class: '',
+        pinned: a.pinned, cover_url: '', author_id: adminU ? adminU.id : '',
+        publish_at: cfg_now_(), status: 'published', views: _randInt_(10, 250)
+      };
+    });
+    DB_bulkInsert(SHEETS.ANNOUNCE, annRows);
+
+    // ── 6. EVENTS (ปฏิทินกิจกรรมจำลอง) ──
+    var evDefs = [
+      { d: 3, t: 'ประชุมผู้ปกครอง', type: 'meeting' }, { d: 7, t: 'กิจกรรมวันไหว้ครู', type: 'activity' },
+      { d: 14, t: 'สอบกลางภาค', type: 'exam' }
+    ];
+    var evRows = evDefs.map(function (e) {
+      return { title: e.t, event_type: e.type, event_date: cfg_dateOnly_(new Date(Date.now() + e.d * 864e5)), end_date: '', time: '08:30', location: 'โรงเรียน', target_role: 'all', target_class: '', description: '', color: '', created_by: adminU ? adminU.id : '', status: 'active' };
+    });
+    DB_bulkInsert(SHEETS.EVENTS, evRows);
+
+    return 'นำเข้าข้อมูลสำเร็จ: ครู ' + STAFF.length + ' ท่าน · นักเรียน ' + studentRows.length + ' คน · ' + CLASS_DEFS.length + ' ชั้นเรียน';
+  } finally { 
+    DB_endBatch(); 
+  }
 }
 
-/* ── Web App URL ─────────────────────────────────────────────────── */
-function menu_openWebApp() {
-  var url = ScriptApp.getService().getUrl();
-  if (!url) { SpreadsheetApp.getUi().alert('ยังไม่ได้ Deploy', 'กรุณา Deploy > New deployment > Web app ก่อน', SpreadsheetApp.getUi().ButtonSet.OK); return; }
-  var html = '<script>window.open("' + url + '","_blank");google.script.host.close();</script>';
-  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(50).setHeight(10), 'กำลังเปิด...');
-}
-function menu_copyWebAppUrl() {
-  var url = ScriptApp.getService().getUrl() || '(ยังไม่ได้ Deploy)';
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Sarabun,sans-serif;padding:16px}input{width:100%;padding:8px;border:1px solid #E3C76F;border-radius:8px}</style></head><body>'
-    + '<p>Web App URL:</p><input id="u" value="' + url + '" onclick="this.select()" readonly>'
-    + '<p style="font-size:12px;color:#888">คลิกที่ช่องเพื่อเลือก แล้วกด Ctrl+C / Cmd+C</p></body></html>';
-  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(420).setHeight(160), 'คัดลอก URL');
+function Seed_user_(username, pw, role, fullName, title) {
+  var salt = Auth_salt_();
+  return DB_insert(SHEETS.USERS, {
+    username: username, password_hash: Auth_hash_(pw, salt), salt: salt,
+    role: role, full_name: fullName, photo_url: '', email: username + '@school.ac.th',
+    phone: '08' + _randInt_(10000000, 99999999), student_id: '', class_id: '',
+    title: title || '', must_change_pw: false, status: 'active'
+  });
 }
 
-/* ── About dialog (440×560) ──────────────────────────────────────── */
-function menu_about() {
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    + '<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700;800&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">'
-    + '<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">'
-    + '<style>'
-    + 'body{margin:0;font-family:Kanit,Sarabun,system-ui,sans-serif;color:#2C2A22;background:#FFFCF5}'
-    + '.about{padding:24px}'
-    + '.ab-head{display:flex;align-items:center;gap:14px;padding-bottom:16px;border-bottom:1px solid #F0E6C8;margin-bottom:16px}'
-    + '.ab-logo{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#B8860B,#D4AF37,#E6C200);display:flex;align-items:center;justify-content:center;color:#fff;font-size:30px;box-shadow:0 8px 24px rgba(184,134,11,.35)}'
-    + '.ab-title{font-size:19px;font-weight:800}'
-    + '.ab-version{display:inline-block;padding:2px 10px;background:linear-gradient(135deg,#B8860B,#D4AF37);color:#fff;border-radius:99px;font-size:11px;font-weight:700;margin-top:4px}'
-    + '.ab-desc{font-size:13px;line-height:1.6;color:#6B6450;margin-bottom:14px}'
-    + '.ab-meta{font-size:12px;color:#8A8270;margin-bottom:14px;line-height:1.9}'
-    + '.ab-dev{display:flex;align-items:center;gap:14px;padding:14px;background:linear-gradient(135deg,#FBF5E3,#fff);border:1px solid #F0E6C8;border-radius:14px;text-decoration:none;color:inherit;transition:all .2s;margin-bottom:14px}'
-    + '.ab-dev:hover{border-color:#E3C76F;box-shadow:0 8px 20px rgba(184,134,11,.15);transform:translateY(-1px)}'
-    + '.ab-dev-photo{width:58px;height:58px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 12px rgba(184,134,11,.3);object-fit:cover;flex-shrink:0;background:linear-gradient(135deg,#B8860B,#D4AF37)}'
-    + '.ab-dev-name{font-size:15px;font-weight:700;margin-top:2px}'
-    + '.ab-dev-link{font-size:12px;color:#B8860B;font-weight:600;margin-top:4px}'
-    + '.ab-tech{font-size:11px;color:#8A8270;background:#FBF5E3;padding:10px 12px;border-radius:10px;border-left:3px solid #C9A227}'
-    + '.ab-btn{padding:9px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:0;font-family:inherit;background:linear-gradient(135deg,#B8860B,#D4AF37);color:#fff;margin-top:16px;float:right}'
-    + '</style></head><body><div class="about">'
-    + '<div class="ab-head"><div class="ab-logo"><i class="bi bi-' + APP.LOGO_ICON + '"></i></div>'
-    + '<div><div class="ab-title">' + APP.NAME + '</div><span class="ab-version">v' + APP.VERSION + '</span></div></div>'
-    + '<div class="ab-desc">' + APP.DESCRIPTION + '</div>'
-    + '<div class="ab-meta">📅 <strong>อัปเดตล่าสุด:</strong> ' + APP.LAST_UPDATED + '<br>🏢 <strong>องค์กร:</strong> ' + APP.ORG + '</div>'
-    + '<a class="ab-dev" href="' + APP.DEV.URL + '" target="_blank" rel="noopener noreferrer">'
-    + '<img class="ab-dev-photo" src="' + APP.DEV.LOGO + '" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'">'
-    + '<div><div style="font-size:11px;color:#8A8270;text-transform:uppercase;letter-spacing:.04em">ผู้พัฒนาระบบ</div>'
-    + '<div class="ab-dev-name">' + APP.DEV.NAME + '</div>'
-    + '<div class="ab-dev-link"><i class="bi bi-globe"></i> ' + APP.DEV.URL.replace(/^https?:\/\//, '') + '</div></div>'
-    + '<i class="bi bi-arrow-up-right" style="color:#B8860B;font-size:18px;margin-left:auto"></i></a>'
-    + '<div class="ab-tech"><i class="bi bi-tools"></i> Tech: Google Apps Script · V8 · Sheets-as-DB · HTML/CSS/JS SPA</div>'
-    + '<button class="ab-btn" onclick="google.script.host.close()">ปิด</button>'
-    + '</div></body></html>';
-  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(440).setHeight(560), 'เกี่ยวกับ ' + APP.SHORT);
+function Seed_clear_(includeSettings) {
+  Object.keys(SHEETS).forEach(function (k) {
+    var name = SHEETS[k];
+    if (!includeSettings && name === SHEETS.SETTINGS) return;
+    var sh = cfg_ss_().getSheetByName(name);
+    if (sh && sh.getLastRow() > 1) {
+      sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).clearContent();
+    }
+    _bumpVer_('sheet:' + name);
+  });
+  _bumpVer_('public');
+  return true;
 }
