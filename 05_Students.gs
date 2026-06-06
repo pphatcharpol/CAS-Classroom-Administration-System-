@@ -43,7 +43,10 @@ function Class_list(user, p) {
 
 function Class_save(user, p) {
   Auth_require_(user, user.role === 'admin' ? 'class.manage_own' : 'class.manage_own');
-  if (user.role !== 'admin' && user.role !== 'homeroom') Auth_require_(user, '*');
+  // เปลี่ยนบรรทัดนี้ ให้เช็กแค่ teacher
+  if (user.role !== 'admin' && user.role !== 'teacher') Auth_require_(user, '*');
+
+  // 1. รับค่าและเตรียมข้อมูล (ห้ามลบส่วนนี้)
   var data = {
     academic_year: p.academic_year || cfg_academicYear_(),
     level: String(p.level || '').trim(),
@@ -56,10 +59,23 @@ function Class_save(user, p) {
     note: p.note || '',
     status: p.status || 'active'
   };
+
   if (!data.level || !data.room) throw new Error('กรุณาระบุระดับชั้นและห้อง');
+
+  // 2. เตรียมตัวแปรสำหรับสร้าง ID
+  var shortYear = String(data.academic_year).slice(-2);
+  var levelClean = data.level.replace(/\./g, ''); // เปลี่ยน ม.1 เป็น ม1
+
   var saved;
-  if (p.id) { saved = DB_update(SHEETS.CLASSES, p.id, data); Audit_log(user, 'update', 'class', p.id, data.level + '/' + data.room); }
-  else { saved = DB_insert(SHEETS.CLASSES, data); Audit_log(user, 'create', 'class', saved.id, data.level + '/' + data.room); }
+  if (p.id) {
+      saved = DB_update(SHEETS.CLASSES, p.id, data);
+      Audit_log(user, 'update', 'class', p.id, data.level + '/' + data.room);
+  } else {
+      // 3. กำหนด ID เองแทนการสุ่ม ก่อนบันทึกลงฐานข้อมูล
+      data.id = 'C' + shortYear + '-' + levelClean + '-' + data.room; 
+      saved = DB_insert(SHEETS.CLASSES, data);
+      Audit_log(user, 'create', 'class', saved.id, data.level + '/' + data.room);
+  }
   return saved;
 }
 
@@ -120,33 +136,51 @@ function Student_get(user, p) {
 
 function Student_save(user, p) {
   Auth_require_(user, 'student.manage');
+
+  // 1. รับค่าและเตรียมข้อมูล (ห้ามลบส่วนนี้)
   var data = {
     student_code: String(p.student_code || '').trim(),
-    title: p.title || '', first_name: String(p.first_name || '').trim(),
-    last_name: String(p.last_name || '').trim(), nickname: p.nickname || '',
-    class_id: p.class_id || '', number: Number(p.number || 0),
-    gender: p.gender || '', birthdate: p.birthdate || '',
-    id_card: p.id_card || '', blood_type: p.blood_type || '',
-    address: p.address || '', phone: p.phone || '',
-    parent_name: p.parent_name || '', parent_relation: p.parent_relation || '',
-    parent_phone: p.parent_phone || '', 
+    title: p.title || '',
+    first_name: String(p.first_name || '').trim(),
+    last_name: String(p.last_name || '').trim(),
+    nickname: p.nickname || '',
+    class_id: p.class_id || '',
+    number: Number(p.number || 0),
+    gender: p.gender || '',
+    birthdate: p.birthdate || '',
+    id_card: p.id_card || '',
+    blood_type: p.blood_type || '',
+    address: p.address || '',
+    phone: p.phone || '',
+    parent_name: p.parent_name || '',
+    parent_relation: p.parent_relation || '',
+    parent_phone: p.parent_phone || '',
     status: p.status || 'active'
   };
+
   if (!data.first_name || !data.last_name) throw new Error('กรุณาระบุชื่อและนามสกุล');
   if (!data.student_code) throw new Error('กรุณาระบุเลขประจำตัวนักเรียน');
 
+  // จัดการอัปโหลดรูปภาพ
   if (p.photo) {
-    var up = Files_uploadImage(p.photo, 'students', 'std-' + data.student_code);
-    data.photo_url = up.url;
-  } else if (p.photo_url != null) data.photo_url = p.photo_url;
+      var up = Files_uploadImage(p.photo, 'students', 'std-' + data.student_code);
+      data.photo_url = up.url;
+  } else if (p.photo_url != null) {
+      data.photo_url = p.photo_url;
+  }
+
+  // 2. เตรียมปีการศึกษาตัวย่อ
+  var shortYear = String(cfg_academicYear_()).slice(-2);
 
   var saved;
   if (p.id) {
-    saved = DB_update(SHEETS.STUDENTS, p.id, data);
-    Audit_log(user, 'update', 'student', p.id, data.first_name);
+      saved = DB_update(SHEETS.STUDENTS, p.id, data);
+      Audit_log(user, 'update', 'student', p.id, data.first_name);
   } else {
-    saved = DB_insert(SHEETS.STUDENTS, data);
-    Audit_log(user, 'create', 'student', saved.id, data.first_name);
+      // 3. กำหนด ID เองโดยใช้ Student Code
+      data.id = 'S' + shortYear + '-' + data.student_code;
+      saved = DB_insert(SHEETS.STUDENTS, data);
+      Audit_log(user, 'create', 'student', saved.id, data.first_name);
   }
   return saved;
 }
@@ -200,6 +234,7 @@ function Student_bulkImport(user, p) {
       class_id: classId, number: Number(r.number || 0), gender: gender, birthdate: r.birthdate || '',
       id_card: String(r.id_card || ''), blood_type: r.blood_type || '', address: r.address || '', phone: String(r.phone || ''),
       parent_name: r.parent_name || '', parent_relation: r.parent_relation || '', parent_phone: String(r.parent_phone || ''),
+      status: 'active' // 👈 เพิ่มบรรทัดนี้
     });
     created++;
   });
