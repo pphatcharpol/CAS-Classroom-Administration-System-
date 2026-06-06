@@ -712,14 +712,19 @@ function openStudentDetail(id){
     });
   };
   function filterUsers(){var q=($('#us-q').value||'').toLowerCase();var r=$('#us-role').value;var f=(Store.__users||[]).filter(function(u){return (!r||u.role===r)&&(u.username+u.full_name).toLowerCase().indexOf(q)>=0;});renderUsers(f);}
-  function renderUsers(items){
+function renderUsers(items){
     $('#us-list').innerHTML='<div class="tbl-wrap"><table class="tbl"><thead><tr><th>ผู้ใช้</th><th>ชื่อ-นามสกุล</th><th>บทบาท</th><th>สถานะ</th><th></th></tr></thead><tbody>'
-    +(items.length?items.map(function(u){return '<tr><td data-label="ผู้ใช้"><div class="flex items-center gap-sm">'+A.avatar(u.photo_url,u.full_name,30)+' '+esc(u.username)+'</div></td><td data-label="ชื่อ">'+esc(u.full_name)+'</td><td data-label="บทบาท"><span class="role-chip role-'+u.role+'"><i class="bi bi-'+((Store.boot.role_icons||{})[u.role]||'person')+'"></i> '+esc(u.role_label)+'</span></td><td data-label="สถานะ"><span class="badge '+(u.status==='active'?'b-ok':'b-muted')+'">'+(u.status==='active'?'ใช้งาน':'ปิด')+'</span></td><td><button class="btn btn-sm btn-ghost" data-edit="'+u.id+'"><i class="bi bi-pencil"></i></button></td></tr>';}).join(''):'<tr><td colspan="5">'+A.empty('person-x','ไม่พบผู้ใช้','')+'</td></tr>')
+    +(items.length?items.map(function(u){
+      // แก้ไขลอจิก: ถ้าสถานะไม่ใช่ inactive ให้ถือว่าใช้งานอยู่ (รองรับกรณีค่า null)
+      var isActive = u.status !== 'inactive'; 
+      return '<tr><td data-label="ผู้ใช้"><div class="flex items-center gap-sm">'+A.avatar(u.photo_url,u.full_name,30)+' '+esc(u.username)+'</div></td><td data-label="ชื่อ">'+esc(u.full_name)+'</td><td data-label="บทบาท"><span class="role-chip role-'+u.role+'"><i class="bi bi-'+((Store.boot.role_icons||{})[u.role]||'person')+'"></i> '+esc(u.role_label)+'</span></td><td data-label="สถานะ"><span class="badge '+(isActive?'b-ok':'b-muted')+'">'+(isActive?'ใช้งาน':'ปิด')+'</span></td><td><button class="btn btn-sm btn-ghost" data-edit="'+u.id+'"><i class="bi bi-pencil"></i></button></td></tr>';
+    }).join(''):'<tr><td colspan="5">'+A.empty('person-x','ไม่พบผู้ใช้','')+'</td></tr>')
     +'</tbody></table></div>';
     $$('[data-edit]').forEach(function(b){b.addEventListener('click',function(){var u=(Store.__users||[]).filter(function(x){return x.id===b.dataset.edit;})[0];openUserForm(u);});});
   }
-  function openUserForm(u){
+function openUserForm(u){
     u=u||{};var edit=!!u.id;var roles=Store.boot.roles||{};
+    var isActive = u.status !== 'inactive'; // กำหนดค่า default ให้ช่องไม่แหว่ง
     A.modal({html:
       '<div class="modal-head grad"><div class="mh-ic"><i class="bi bi-person-gear"></i></div><h3>'+(edit?'แก้ไขผู้ใช้':'เพิ่มผู้ใช้')+'</h3><button class="modal-x" data-close><i class="bi bi-x-lg"></i></button></div>'
       +'<div class="modal-body"><div class="form-grid">'
@@ -727,7 +732,7 @@ function openStudentDetail(id){
       +'<div class="field"><label>บทบาท *</label><select class="input" id="uf-role">'+['admin','homeroom','teacher'].map(function(k){return '<option value="'+k+'" '+sel(u.role,k)+'>'+esc(roles[k])+'</option>';}).join('')+'</select></div>'
       +fld('ชื่อ-นามสกุล *','uf-name',u.full_name)+fld('อีเมล','uf-email',u.email)
       +fld('เบอร์โทร','uf-phone',u.phone)
-      +'<div class="field"><label>สถานะ</label><select class="input" id="uf-status"><option value="active" '+sel(u.status,'active')+'>ใช้งาน</option><option value="inactive" '+sel(u.status,'inactive')+'>ปิดใช้งาน</option></select></div>'
+      +'<div class="field"><label>สถานะ</label><select class="input" id="uf-status"><option value="active" '+sel(isActive,true)+'>ใช้งาน</option><option value="inactive" '+sel(!isActive,true)+'>ปิดใช้งาน</option></select></div>'
       +(edit?'':fld('รหัสผ่านเริ่มต้น','uf-pw','123456'))
       +'</div></div>'
       +'<div class="modal-foot">'+(edit?'<button class="btn btn-soft" id="uf-reset"><i class="bi bi-key"></i> รีเซ็ตรหัส</button>':'')+'<button class="btn btn-ghost" data-close>ยกเลิก</button><button class="btn btn-primary" data-state="idle" id="uf-save"><span class="st st-idle"><i class="bi bi-check-lg"></i> บันทึก</span></button></div>',
@@ -763,85 +768,137 @@ function openStudentDetail(id){
   function classLabelOf(id){var c=(Store.__classes||[]).filter(function(x){return x.id===id;})[0];return c?(c.level+'/'+c.room):'';}
   function classLevelOf(id){var c=(Store.__classes||[]).filter(function(x){return x.id===id;})[0];return c?c.level:'';}
 
-  /* ── ตารางเรียน ── */
+/* ════════════════ ตารางเรียน (Liquid Glass UI) ═════════════════ */
   var ttState={class_id:'',term:'1',year:''};
+  
   Routes['#/timetable']=function(){
     setTitle('ตารางเรียน','ตารางเรียนประจำห้อง');
-    Promise.all([loadCmMeta(),loadClasses()]).then(function(){
-      if(!ttState.class_id&&Store.__classes.length)ttState.class_id=Store.__classes[0].id;
-      ttState.year=ttState.year||acYear();
-      var edit=can('classroom.manage');
-      page().innerHTML=hero({pill:'บริหารห้องเรียน',pill_icon:'calendar3-week-fill',title:'ตารางเรียน',sub:'จัดตารางเรียนรายคาบ '+cmMeta().periods.length+' คาบ/วัน',deco:'calendar3-week',kpis:[]})
-      +'<div class="toolbar"><select class="tb-select" id="tt-class">'+classOptions(ttState.class_id)+'</select><select class="tb-select" id="tt-term">'+termOptions(ttState.term)+'</select><input type="number" class="tb-select" id="tt-year" value="'+ttState.year+'" style="width:104px"><div class="grow"></div><button class="btn btn-soft" id="tt-print"><i class="bi bi-printer"></i> พิมพ์</button>'+(edit?'<button class="btn btn-primary" id="tt-save"><i class="bi bi-save"></i> บันทึกตาราง</button>':'')+'</div>'
-      +'<div class="card"><div id="tt-grid" class="tt-wrap"></div></div>';
+    Promise.all([loadCmMeta(), loadClasses()]).then(function(){
+      if(!ttState.class_id && Store.__classes.length) ttState.class_id=Store.__classes[0].id;
+      // ตั้งค่าปีการศึกษาอัตโนมัติ
+      ttState.year = ttState.year || (Store.boot.settings ? Store.boot.settings.academic_year : new Date().getFullYear()+543);
+      
+      var edit = can('classroom.manage');
+      page().innerHTML=hero({pill:'บริหารห้องเรียน',pill_icon:'calendar3-week-fill',title:'ตารางเรียน',sub:'จัดตารางเรียนรายคาบ',deco:'calendar3-week',kpis:[]})
+      +'<div class="toolbar"><select class="tb-select" id="tt-class">'+classOptions(ttState.class_id)+'</select>'
+      +'<select class="tb-select" id="tt-term"><option value="1" '+(ttState.term==='1'?'selected':'')+'>เทอม 1</option><option value="2" '+(ttState.term==='2'?'selected':'')+'>เทอม 2</option></select>'
+      +'<input type="number" class="tb-select" id="tt-year" value="'+ttState.year+'" style="width:104px">'
+      +'<div class="grow"></div>'
+      +'<button class="btn btn-soft" id="tt-print"><i class="bi bi-printer"></i> พิมพ์</button>'
+      +(edit?'<button class="btn btn-primary" id="tt-save" data-state="idle"><span class="st st-idle"><i class="bi bi-save"></i> บันทึกตาราง</span></button>':'')+'</div>'
+      +'<div class="card"><div id="tt-grid" class="tt-wrap" style="overflow-x: auto;"></div></div>';
+      
       $('#tt-class').addEventListener('change',function(){ttState.class_id=this.value;loadTimetable();});
       $('#tt-term').addEventListener('change',function(){ttState.term=this.value;loadTimetable();});
-      $('#tt-year').addEventListener('change',loadTimetable);
+      $('#tt-year').addEventListener('change',function(){ttState.year=this.value;loadTimetable();});
       $('#tt-print').addEventListener('click',function(){printTimetable();});
-      if($('#tt-save'))$('#tt-save').addEventListener('click',saveTimetable);
+      if($('#tt-save')) $('#tt-save').addEventListener('click', saveTimetable);
+      
       loadTimetable();
     });
   };
+
   function loadTimetable(){
-      $('#tt-grid').innerHTML=A.skeletonCards(2);
-      // เอา call('subject.list') ออกไปเลย
-      call('timetable.get',{class_id:ttState.class_id,term:ttState.term,year:$('#tt-year').value}).then(function(r){
-        Store.__ttGrid={};var g=r.grid||{};Object.keys(g).forEach(function(k){Store.__ttGrid[k]=g[k];});
-        Store.__ttSubjects=[]; // เลิกใช้
-        renderTimetable();
-      }).catch(function(e){ $('#tt-grid').innerHTML=A.empty('exclamation-octagon','ผิดพลาด',e.message); });
-    }
-  function renderTimetable(){
-    var m=cmMeta();var edit=can('classroom.manage');
-    var head='<tr><th class="tt-period">คาบ</th>'+m.weekdays.map(function(w){return '<th>'+esc(w.label)+'</th>';}).join('')+'</tr>';
-    var body='';
-    m.periods.forEach(function(per){
-      body+='<tr><th class="tt-period">'+per.p+'<small>'+per.time.replace('-','<br>')+'</small></th>'+m.weekdays.map(function(w){
-        var key=w.v+'-'+per.p;var c=Store.__ttGrid[key];
-        var inner=c?('<div class="sj">'+esc(c.subject_code||c.subject_text||'')+'</div>'+(c.subject_text&&c.subject_code?'<div class="mt2">'+esc(c.subject_text)+'</div>':'')+(c.teacher_text?'<div class="mt2">'+esc(c.teacher_text)+'</div>':'')+(c.room?'<div class="mt2">'+esc(c.room)+'</div>':'')):'<span class="muted" style="font-size:11px">'+(edit?'+ เพิ่ม':'-')+'</span>';
-        return '<td class="tt-cell'+(c?' filled':'')+'" data-key="'+key+'">'+inner+'</td>';
-      }).join('')+'</tr>';
-      if(per.p===m.lunch_after)body+='<tr class="tt-lunch"><td colspan="'+(m.weekdays.length+1)+'"><i class="bi bi-cup-hot"></i> พักกลางวัน</td></tr>';
-    });
-    $('#tt-grid').innerHTML='<table class="tt">'+head+body+'</table>';
-    if(edit)$$('#tt-grid .tt-cell').forEach(function(td){td.addEventListener('click',function(){openTtCell(td.dataset.key);});});
+    $('#tt-grid').innerHTML=A.skeletonCards(2);
+    call('timetable.get',{class_id: ttState.class_id}).then(function(r){
+      Store.__ttGrid = {};
+      // จัดรูปแบบข้อมูลที่ได้มาจาก Backend ให้อยู่ในรูปแบบ key = weekday-period
+      (r.items || []).forEach(function(item){
+        Store.__ttGrid[item.weekday + '-' + item.period] = item;
+      });
+      renderTimetableGrid();
+    }).catch(function(e){ $('#tt-grid').innerHTML=A.empty('exclamation-octagon','ผิดพลาด',e.message); });
   }
-  function openTtCell(key){
-    var c=Store.__ttGrid[key]||{};
-    var parts=key.split('-');
-    A.modal({html:
-      '<div class="modal-head grad"><div class="mh-ic"><i class="bi bi-calendar3-week"></i></div><h3>'+wdLabel(parts[0])+' คาบ '+parts[1]+'</h3><button class="modal-x" data-close><i class="bi bi-x-lg"></i></button></div>'
-      +'<div class="modal-body">'
-      +fld('ชื่อวิชา *','tc-text',c.subject_text||'') // เปลี่ยนเป็นพิมพ์ชื่อวิชาเองล้วนๆ
-      +'<div class="form-grid">'+fld('ครูผู้สอน','tc-teacher',c.teacher_text)+fld('ห้อง','tc-room',c.room)+'</div></div>'
-      +'<div class="modal-foot">'+(c.subject_text?'<button class="btn btn-danger" id="tc-clear"><i class="bi bi-trash"></i> ลบคาบ</button>':'')+'<button class="btn btn-ghost" data-close>ยกเลิก</button><button class="btn btn-primary" id="tc-ok"><i class="bi bi-check-lg"></i> ตกลง</button></div>',
-      onMount:function(bd){
-        $('#tc-ok',bd).addEventListener('click',function(){
-          var text=val('tc-text');
-          if(!text){A.err('ระบุชื่อวิชา','');return;}
-          // เซฟเฉพาะ text ไม่ต้องมี subject_id
-          Store.__ttGrid[key]={weekday:+parts[0],period:+parts[1],subject_id:'',subject_code:'',subject_text:text,teacher_text:val('tc-teacher'),room:val('tc-room')};
-          A.closeModal();renderTimetable();
-        });
-        if($('#tc-clear',bd))$('#tc-clear',bd).addEventListener('click',function(){delete Store.__ttGrid[key];A.closeModal();renderTimetable();});
-      }
+
+  function renderTimetableGrid(){
+    var edit = can('classroom.manage');
+    var WEEKDAYS5 = [{v:1, l:'จันทร์'},{v:2, l:'อังคาร'},{v:3, l:'พุธ'},{v:4, l:'พฤหัสบดี'},{v:5, l:'ศุกร์'}];
+    var PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
+
+    var html = '<div class="tt-liquid-grid">';
+    
+    // สร้างหัวตาราง (แถวบนสุด)
+    html += '<div class="glass-cell head"></div>';
+    PERIODS.forEach(function(p){ html += '<div class="glass-cell head">คาบ '+p+'</div>'; });
+
+    // สร้างช่องตาราง วัน x คาบ
+    WEEKDAYS5.forEach(function(day){
+      html += '<div class="glass-cell day">'+day.l+'</div>';
+      PERIODS.forEach(function(p){
+        var key = day.v + '-' + p;
+        var c = Store.__ttGrid[key] || {};
+        
+        if(edit) {
+          html += '<div class="glass-cell input-cell">'
+               + '<input type="text" class="tt-in subj" placeholder="วิชา" id="subj-'+key+'" value="'+esc(c.subject_text||'')+'">'
+               + '<input type="text" class="tt-in teach" placeholder="ครูผู้สอน" id="teach-'+key+'" value="'+esc(c.teacher_text||'')+'">'
+               + '</div>';
+        } else {
+          html += '<div class="glass-cell display-cell" style="text-align:center;">'
+               + '<b style="color:var(--navy);font-family:var(--font);font-size:14px;display:block;">'+esc(c.subject_text||'-')+'</b>'
+               + '<small style="color:var(--muted);font-size:11.5px;">'+esc(c.teacher_text||'')+'</small>'
+               + '</div>';
+        }
+      });
     });
+
+    html += '</div>';
+    $('#tt-grid').innerHTML = html;
   }
+
   function saveTimetable(){
-    var cells=Object.keys(Store.__ttGrid).map(function(k){return Store.__ttGrid[k];});
-    A.run($('#tt-save'),{loading:'กำลังบันทึก…'},function(){return call('timetable.save',{class_id:ttState.class_id,term:ttState.term,year:$('#tt-year').value,cells:cells});}).then(function(d){A.ok('บันทึกตารางเรียนสำเร็จ',d.count+' คาบ');}).catch(function(){});
+    var btn = $('#tt-save');
+    var cells = [];
+    var WEEKDAYS5 = [1,2,3,4,5];
+    var PERIODS = [1,2,3,4,5,6,7,8];
+
+    WEEKDAYS5.forEach(function(d){
+      PERIODS.forEach(function(p){
+        var key = d + '-' + p;
+        var subj = $('#subj-'+key);
+        var teach = $('#teach-'+key);
+        if(subj && teach) {
+          if(subj.value.trim() || teach.value.trim()){
+            cells.push({
+              weekday: d, period: p,
+              subject_text: subj.value.trim(),
+              teacher_text: teach.value.trim()
+            });
+          }
+        }
+      });
+    });
+
+    A.submit(btn, 'loading');
+    call('timetable.save', { 
+      class_id: ttState.class_id, 
+      term: ttState.term, 
+      year: ttState.year, 
+      cells: cells 
+    }).then(function(){
+      A.submit(btn, 'success');
+      A.ok('บันทึกสำเร็จ', 'อัปเดตตารางเรียนเรียบร้อยแล้ว');
+      loadTimetable();
+    }).catch(function(e){
+      A.submit(btn, 'error');
+      A.err('บันทึกไม่สำเร็จ', e.message);
+    });
   }
+
   function printTimetable(){
-    var m=cmMeta();var g=Store.__ttGrid||{};
-    var head='<tr><th class="pr-c">คาบ/วัน</th>'+m.weekdays.map(function(w){return '<th class="pr-c">'+esc(w.label)+'</th>';}).join('')+'</tr>';
-    var body='';
+    // ใช้ฟังก์ชันพิมพ์เดิมของคุณครูได้เลยเพราะโครงสร้างดีอยู่แล้ว
+    var m = cmMeta(); var g = Store.__ttGrid || {};
+    var head = '<tr><th class="pr-c">คาบ/วัน</th>'+m.weekdays.map(function(w){return '<th class="pr-c">'+esc(w.label)+'</th>';}).join('')+'</tr>';
+    var body = '';
     m.periods.forEach(function(per){
-      body+='<tr><th class="pr-c">'+per.p+'<br><span style="font-weight:400;font-size:10px">'+per.time+'</span></th>'+m.weekdays.map(function(w){var c=g[w.v+'-'+per.p];return '<td class="pr-c">'+(c?('<b>'+esc(c.subject_code||c.subject_text)+'</b>'+(c.teacher_text?'<br>'+esc(c.teacher_text):'')+(c.room?'<br>'+esc(c.room):'')):'-')+'</td>';}).join('')+'</tr>';
-      if(per.p===m.lunch_after)body+='<tr><td colspan="'+(m.weekdays.length+1)+'" class="pr-c" style="background:#FBF5E3">พักกลางวัน</td></tr>';
+      body += '<tr><th class="pr-c">'+per.p+'<br><span style="font-weight:400;font-size:10px">'+per.time+'</span></th>'+m.weekdays.map(function(w){
+        var c = g[w.v+'-'+per.p];
+        return '<td class="pr-c">'+(c?('<b>'+esc(c.subject_text)+'</b>'+(c.teacher_text?'<br>'+esc(c.teacher_text):'')):'-')+'</td>';
+      }).join('')+'</tr>';
+      if(per.p === m.lunch_after) body += '<tr><td colspan="'+(m.weekdays.length+1)+'" class="pr-c" style="background:#FBF5E3">พักกลางวัน</td></tr>';
     });
     A.printDoc({orientation:'landscape',pill:'ตารางเรียน',title:'ตารางเรียนประจำห้อง',subtitle:'ชั้น '+classLabelOf(ttState.class_id)+' · ภาคเรียนที่ '+ttState.term+'/'+$('#tt-year').value,docNo:'TT-'+classLabelOf(ttState.class_id),watermark:'ตารางเรียน',content:'<table class="pr-table">'+head+body+'</table>',signatures:[{role:'ครูประจำชั้น'},{role:'หัวหน้าวิชาการ'},{role:'ผู้อำนวยการ'}]});
   }
-
 
   /* ════════════════ กิจกรรม / กิจกรรม / ปฏิทิน (ชุด D) ══ */
   function loadExMeta(){return Store.__exMeta?Promise.resolve(Store.__exMeta):call('extra.meta',{}).then(function(m){Store.__exMeta=m;return m;});}
