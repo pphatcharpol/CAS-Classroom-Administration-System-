@@ -74,7 +74,9 @@ function menu_seedDemo() {
   var res = ui.alert('🌱 เพิ่มข้อมูลตัวอย่าง', 'จะล้างข้อมูลเดิม (ยกเว้นการตั้งค่า) แล้วสร้างข้อมูลตัวอย่างใหม่\n\nดำเนินการต่อหรือไม่?', ui.ButtonSet.YES_NO);
   if (res !== ui.Button.YES) return;
   var msg = Seed_run();
-  ui.alert('✅ สำเร็จ', msg + '\n\nบัญชีทดสอบ:\n  • admin / admin (ผู้ดูแลระบบ)\n  • kru1 / kru1 (ครูประจำชั้น)\n  • teacher1 / teacher1 (ครูผู้สอน)\n  • student / student (นักเรียนสาธิต)\n  • นักเรียนอื่น: ใช้เลขประจำตัวเป็นทั้ง user/pass', ui.ButtonSet.OK);
+  
+  // อัปเดตข้อความตรงนี้ให้ตรงกับข้อมูลที่ Seed เข้าไป
+  ui.alert('✅ สำเร็จ', msg + '\n\nบัญชีทดสอบ:\n  • admin / 123456 (ผู้ดูแลระบบ)\n  • t1 / 123456 (ครูที่ปรึกษา ม.1/1)\n  • t2 / 123456 (ครูผู้สอน)', ui.ButtonSet.OK);
 }
 
 function menu_clearAll() {
