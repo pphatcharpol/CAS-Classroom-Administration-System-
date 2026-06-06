@@ -324,41 +324,39 @@ function doLogout(silent){
   location.hash='';dispatch();
 }
 
-/* ════════ Login screen ═══════════════════════════════════════════ */
+/* ════════ Login screen (Apple Liquid Glass UI) ══════════════════ */
 function renderLogin(){
   var b=Store.boot||{};var app=b.app||{};var dev=b.dev||{};
-  var demos=[ //ทดลอง
-    {u:'admin',p:'admin',r:'admin',n:'ผู้ดูแลระบบ',c:'#6A1B9A'},
-    {u:'kru1',p:'kru1',r:'homeroom',n:'ครูประจำชั้น',c:'var(--gold)'},
-    {u:'teacher1',p:'teacher1',r:'teacher',n:'ครูผู้สอน',c:'#1565C0'},
-  ];
-  var icons=b.role_icons||{};
-  var demoHtml=demos.map(function(d){
-    return '<button type="button" class="lf-demo-card" data-u="'+d.u+'" data-p="'+d.p+'"><div class="di" style="background:'+d.c+'"><i class="bi bi-'+(icons[d.r]||'person')+'"></i></div><div><b>'+d.n+'</b><small>'+d.u+' / '+d.p+'</small></div></button>';
-  }).join('');
+
   A.$('#app-root').innerHTML=
-    '<div class="login"><div class="login-brand"><div class="lb-beam"></div>'
-    +'<div class="lb-top"><div class="lb-logo"><i class="bi bi-'+(app.logo_icon||'mortarboard-fill')+'"></i></div>'
-    +'<div class="lb-title">'+A.esc(app.title||'ระบบงานธุรการชั้นเรียน')+'</div>'
-    +'<div class="lb-desc">'+A.esc(app.description||'')+'</div>'
-    +'<div class="lb-feats">'
-    +'<div class="lb-feat"><i class="bi bi-people-fill"></i> ข้อมูลนักเรียน · ชั้นเรียน ครบทุกมิติ</div>'
-    +'<div class="lb-feat"><i class="bi bi-clipboard-check-fill"></i> เช็กชื่อ · แบบเรียลไทม์</div>'
-    +'<div class="lb-feat"><i class="bi bi-house-heart-fill"></i> เยี่ยมบ้าน · ประกาศและรายงาน</div></div></div>'
-    +'<div class="lb-foot"><i class="bi bi-shield-check"></i> โรงเรียนวังน้ำคู้ศึกษา · '+A.esc(app.org||'')+'</div></div>'
-    +'<div class="login-form"><div class="lf-card">'
-    +'<div class="lf-head"><div class="ic"><i class="bi bi-box-arrow-in-right"></i></div><h2>เข้าสู่ระบบ</h2><p>ยินดีต้อนรับสู่ '+A.esc(app.short||'CAS')+'</p></div>'
-    +'<form id="login-form">'
-    +'<div class="field"><label>ชื่อผู้ใช้</label><div class="inwrap"><i class="bi bi-person"></i><input id="lg-user" autocomplete="username" placeholder="เช่น admin หรือเลขประจำตัว" required></div></div>'
-    +'<div class="field"><label>รหัสผ่าน</label><div class="inwrap"><i class="bi bi-lock"></i><input id="lg-pass" type="password" autocomplete="current-password" placeholder="รหัสผ่าน" required><button type="button" class="eye" id="lg-eye"><i class="bi bi-eye"></i></button></div></div>'
-    +'<button type="submit" class="btn btn-primary btn-block" data-state="idle" id="lg-btn"><span class="st st-idle"><i class="bi bi-box-arrow-in-right"></i> เข้าสู่ระบบ</span></button>'
-    +'</form>'
-    +'</div></div></div>';
+    '<div class="login-wrapper">' +
+      '<div class="login-mesh"></div>' + 
+      '<div class="login-glass-card">' +
+        '<div class="lg-left">' +
+          '<div class="lg-logo"><i class="bi bi-'+(app.logo_icon||'mortarboard-fill')+'"></i></div>' +
+          '<h1 class="lg-title">'+A.esc(app.title||'ระบบงานธุรการชั้นเรียน')+'</h1>' +
+          '<p class="lg-desc">'+A.esc(app.description||'จัดการชั้นเรียน เช็กชื่อ และเยี่ยมบ้าน แบบครบวงจรในที่เดียว')+'</p>' +
+          '<div class="lg-feats">' +
+            '<div class="lg-feat"><i class="bi bi-shield-check"></i> ปลอดภัย ใช้งานง่าย</div>' +
+            '<div class="lg-feat"><i class="bi bi-phone"></i> รองรับทุกอุปกรณ์</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="lg-right">' +
+          '<div class="lf-head"><h2>เข้าสู่ระบบ</h2><p>ลงชื่อเข้าใช้เพื่อเริ่มต้นทำงาน</p></div>' +
+          '<form id="login-form">' +
+            '<div class="field"><label>ชื่อผู้ใช้</label><div class="inwrap"><i class="bi bi-person"></i><input id="lg-user" autocomplete="username" placeholder="เลขประจำตัว หรือ ชื่อผู้ใช้" required></div></div>' +
+            '<div class="field"><label>รหัสผ่าน</label><div class="inwrap"><i class="bi bi-lock"></i><input id="lg-pass" type="password" autocomplete="current-password" placeholder="รหัสผ่าน" required><button type="button" class="eye" id="lg-eye"><i class="bi bi-eye"></i></button></div></div>' +
+            /* ล็อกขนาดปุ่มด้วยคลาส .lg-btn-submit ป้องกันปุ่มดิ้น/ขยายตัวเวลาขึ้น Error */
+            '<button type="submit" class="btn btn-primary btn-block lg-btn-submit" data-state="idle" id="lg-btn"><span class="st st-idle"><i class="bi bi-box-arrow-in-right"></i> เข้าสู่ระบบ</span></button>' +
+          '</form>' +
+          '<div class="lg-foot"><i class="bi bi-building"></i> '+A.esc(app.org||'CAS School')+'</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
 
   var form=A.$('#login-form');
   form.addEventListener('submit',function(e){e.preventDefault();doLogin(A.$('#lg-user').value.trim(),A.$('#lg-pass').value,A.$('#lg-btn'));});
   A.$('#lg-eye').addEventListener('click',function(){var i=A.$('#lg-pass');i.type=i.type==='password'?'text':'password';this.innerHTML='<i class="bi bi-eye'+(i.type==='text'?'-slash':'')+'"></i>';});
-  A.$$('.lf-demo-card').forEach(function(c){c.addEventListener('click',function(){A.$('#lg-user').value=c.dataset.u;A.$('#lg-pass').value=c.dataset.p;doLogin(c.dataset.u,c.dataset.p,A.$('#lg-btn'));});});
 }
 
 /* ════════ Navigation config ══════════════════════════════════════ */
