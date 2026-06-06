@@ -35,7 +35,8 @@ function _classroomScope_(user, p) {
   }
   Auth_require_(user, 'classroom.view');
   if (!p.class_id) throw new Error('กรุณาเลือกชั้นเรียน');
-  if (user.role === 'homeroom') {
+  // เปลี่ยนจาก homeroom เป็น teacher
+  if (user.role === 'teacher') {
     var scope = Auth_classScope_(user);
     if (scope && scope.indexOf(p.class_id) < 0) throw new Error('PERMISSION_DENIED');
   }
@@ -58,27 +59,17 @@ function _classStudents_(classId) {
 
 /* ════════ ตารางเรียน (Timetable) ════════════════════════════════ */
 function Timetable_get(user, p) {
-  var classId = _classroomScope_(user, p);
-  var year = p.year || cfg_academicYear_(), term = p.term || '1';
-  var userIdx = DB_index(SHEETS.USERS); // เอา subjIdx ออก
+  Auth_require_(user, '*'); // ทุกคนที่มีสิทธิ์เข้าถึงระบบสามารถดูตารางเรียนได้
   
-  var rows = DB_readAll(SHEETS.TIMETABLE).filter(function (t) { 
-    return t.class_id === classId && String(t.academic_year) === String(year) && String(t.term) === String(term); 
+  if (!p.class_id) throw new Error('กรุณาระบุรหัสชั้นเรียน');
+
+  // ดึงข้อมูลตารางเรียนเฉพาะห้องที่ระบุ และตัดรายการที่ถูกลบออก
+  var rows = DB_readAll(SHEETS.TIMETABLE).filter(function(t) { 
+    return t.class_id === p.class_id && t.status !== 'deleted'; 
   });
-  
-  var grid = {}; // key weekday-period → cell
-  rows.forEach(function (t) {
-    grid[t.weekday + '-' + t.period] = {
-      weekday: Number(t.weekday), period: Number(t.period),
-      subject_id: t.subject_id || '', 
-      subject_text: t.subject_text || '',
-      subject_code: '', 
-      teacher_text: t.teacher_text || '', 
-      room: t.room || ''
-    };
-  });
-  
-  return { class_id: classId, year: year, term: term, grid: grid, weekdays: WEEKDAYS5, periods: PERIODS, lunch_after: LUNCH_AFTER };
+
+  // ส่งข้อมูลดิบกลับไปให้ UI แสดงผลได้เลย
+  return { items: rows };
 }
 
 function Timetable_save(user, p) {
