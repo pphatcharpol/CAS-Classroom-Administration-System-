@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
+ *  SAS · ระบบบริหารจัดการสถานศึกษา (School Administration System)
  *  File:        06_Attendance.gs — โมดูลเช็กชื่อ / การมาเรียน (รายวัน รายชั้น)
  *  Version:     0.0.1
  *  Last Update: 2026-05-30
