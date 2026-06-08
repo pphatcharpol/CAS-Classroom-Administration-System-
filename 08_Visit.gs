@@ -1,7 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
- *  File:        08_VisitHealth.gs — โมดูลเยี่ยมบ้าน (GPS+ภาพ) · บันทึกสุขภาพ (BMI)
+ *  SAS · ระบบบริหารจัดการสถานศึกษา (School Administration System)
+ *  File:        08_Visit.gs — โมดูลเยี่ยมบ้าน (GPS+ภาพ) · บันทึกสุขภาพ (BMI)
  *  Version:     0.0.1
  *  Last Update: 2026-05-30
  *  Developer:   คที
@@ -120,15 +120,22 @@ function Visit_save(user, p) {
     photos_json: JSON.stringify(p.photos || {}),
     consent: p.consent === true || p.consent === 'true', cct_request: p.cct_request !== false
   };
-  if (p.photo) data.photo_url = Files_uploadImage(p.photo, 'visits', 'visit-' + s.student_code).url;
-  else if (p.photo_url != null) data.photo_url = p.photo_url;
+
+  // 👈 อัปโหลดรูปภาพ 3 แบบแทนที่ของเดิม
+  if (p.photo_house_in) data.photo_house_in = Files_uploadImage(p.photo_house_in, 'visits', 'in-' + s.student_code).url;
+  else if (p.photo_house_in_url != null) data.photo_house_in = p.photo_house_in_url;
+
+  if (p.photo_house_out) data.photo_house_out = Files_uploadImage(p.photo_house_out, 'visits', 'out-' + s.student_code).url;
+  else if (p.photo_house_out_url != null) data.photo_house_out = p.photo_house_out_url;
+
+  if (p.map_photo) data.map_photo = Files_uploadImage(p.map_photo, 'visits', 'map-' + s.student_code).url;
+  else if (p.map_photo_url != null) data.map_photo = p.map_photo_url;
 
   var saved;
   if (p.id) { saved = DB_update(SHEETS.HOMEVISIT, p.id, data); Audit_log(user, 'update', 'visit', p.id, s.first_name + ' · ' + (POVERTY_LABEL[data.poverty_status] || '')); }
   else { saved = DB_insert(SHEETS.HOMEVISIT, data); Audit_log(user, 'create', 'visit', saved.id, s.first_name + ' · ' + (POVERTY_LABEL[data.poverty_status] || '')); }
   return saved;
 }
-
 // แปลง record → object ที่ parse JSON แล้ว (สำหรับ detail/print)
 function Visit_get(user, p) {
   Auth_require_(user, 'visit.view');
@@ -190,3 +197,4 @@ function Visit_overview(user, p) {
     risk: risk, poverty: poverty, totalVisits: visits.length
   };
 }
+
