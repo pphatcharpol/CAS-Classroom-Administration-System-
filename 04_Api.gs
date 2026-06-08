@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
+ *  SAS · ระบบบริหารจัดการสถานศึกษา (School Administration System)
  *  File:        04_Api.gs — Universal API endpoint · single-shot boot · dispatch map
  *  Version:     0.0.1
  *  Last Update: 2026-05-30
@@ -163,3 +163,5 @@ function Dash_summary(user, p) {
   out.classes = Class_list(user, {}).items.slice(0, 8);
   return out;
 }
+
+
