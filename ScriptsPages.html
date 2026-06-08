@@ -1,6 +1,6 @@
-<!--
+<!--f
 ═══════════════════════════════════════════════════════════════
- CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
+ SAS · ระบบบริหารจัดการสถานศึกษา (School Administration System)
  File:        ScriptsPages.html — Dashboards (role-aware) + ทุกหน้าโมดูล (lazy-loaded)
  Version:     1.0.0
  Last Update: 2026-05-30
@@ -11,7 +11,7 @@
            เพื่อให้ createHtmlOutputFromFile มอง JS เป็น raw text (กัน "Malformed HTML content")
 ═══════════════════════════════════════════════════════════════
 -->
-<script id="sps-pages-script" type="text/x-cas-pages">
+<script id="sps-pages-script" type="text/x-sas-pages">
 (function(){
   var $=A.$, $$=A.$$, esc=A.esc, num=A.num;
   function page(){return $('#page');}
@@ -107,7 +107,7 @@
     var trend=(att.trend||[]).map(function(t){return {label:TH.date(t.date).split(' ').slice(0,2).join(' '),value:t.rate,suffix:'%'};});
     var annHtml=(d.announcements||[]).slice(0,4).map(annRow).join('')||'<div class="muted center" style="padding:18px">ยังไม่มีประกาศ</div>';
 
-    page().innerHTML=hero({pill:greeting()+' · '+u.full_name,pill_icon:'hand-thumbs-up-fill',title:'แดชบอร์ด '+(u.role==='admin'?'ผู้ดูแลระบบ':'ครู'),sub:'ภาพรวมงานธุรการชั้นเรียน ปีการศึกษา '+(Store.boot.settings?Store.boot.settings.academic_year:''),deco:'speedometer2',kpis:kpis})
+    page().innerHTML=hero({pill:greeting()+' · '+u.full_name,pill_icon:'hand-thumbs-up-fill',title:'แดชบอร์ด '+(u.role==='admin'?'ผู้บริหาร':'ครู'),sub:'ภาพรวมงานธุรการชั้นเรียน ปีการศึกษา '+(Store.boot.settings?Store.boot.settings.academic_year:''),deco:'speedometer2',kpis:kpis})
     +staffMissions(d)
     +'<div class="card mb"><div class="card-h"><h3><i class="bi bi-lightning-charge-fill"></i> ทางลัด</h3></div>'+quickGrid()+'</div>'
     +'<div class="grid stagger" style="grid-template-columns:1.4fr 1fr;align-items:start;margin-bottom:16px">'
@@ -366,13 +366,14 @@ function openStudentDetail(id){
       +fld('ระดับชั้น * (เช่น ป.4, ม.2)','cf-level',c.level)+fld('ห้อง * (เช่น 1, 2)','cf-room',c.room)
       +fld('ปีการศึกษา','cf-year',c.academic_year||(Store.boot.settings?Store.boot.settings.academic_year:''),'number')
       +fld('ความจุ','cf-cap',c.capacity||40,'number')
-      +'<div class="field full"><label>ครูประจำชั้น</label><select class="input" id="cf-hr"><option value="">— เลือกครู —</option>'+teachers.map(function(t){return '<option value="'+t.id+'" '+sel(c.homeroom_teacher_id,t.id)+'>'+esc(t.full_name)+' ('+esc(t.role_label)+')</option>';}).join('')+'</select></div>'
-      +'<div class="field"><label>สีประจำชั้น</label><input type="color" class="input" id="cf-color" value="'+(c.color||'#C9A227')+'" style="height:46px;padding:4px"></div>'
+      +'<div class="field"><label>ครูประจำชั้น (คนที่ 1)</label><select class="input" id="cf-hr"><option value="">— เลือกครู —</option>'+teachers.map(function(t){return '<option value="'+t.id+'" '+sel(c.homeroom_teacher_id,t.id)+'>'+esc(t.full_name)+' ('+esc(t.role_label)+')</option>';}).join('')+'</select></div>'
+      +'<div class="field"><label>ครูประจำชั้น (คนที่ 2)</label><select class="input" id="cf-hr2"><option value="">— เลือกครู —</option>'+teachers.map(function(t){return '<option value="'+t.id+'" '+sel(c.co_teacher_id,t.id)+'>'+esc(t.full_name)+' ('+esc(t.role_label)+')</option>';}).join('')+'</select></div>'
+      +'<div class="field full"><label>สีประจำชั้น</label><input type="color" class="input" id="cf-color" value="'+(c.color||'#C9A227')+'" style="height:46px;padding:4px"></div>'
       +'</div></div>'
       +'<div class="modal-foot">'+(edit&&Store.user.role==='admin'?'<button class="btn btn-danger" id="cf-del"><i class="bi bi-trash"></i></button>':'')+'<button class="btn btn-ghost" data-close>ยกเลิก</button><button class="btn btn-primary" data-state="idle" id="cf-save"><span class="st st-idle"><i class="bi bi-check-lg"></i> บันทึก</span></button></div>',
       onMount:function(bd){
         $('#cf-save',bd).addEventListener('click',function(){
-          var btn=this;var p={id:c.id,level:val('cf-level'),room:val('cf-room'),academic_year:val('cf-year'),capacity:val('cf-cap'),homeroom_teacher_id:val('cf-hr'),color:val('cf-color')};
+          var btn=this;var p={id:c.id,level:val('cf-level'),room:val('cf-room'),academic_year:val('cf-year'),capacity:val('cf-cap'),homeroom_teacher_id:val('cf-hr'),co_teacher_id:val('cf-hr2'),color:val('cf-color')};
           if(!p.level||!p.room){A.err('กรอกข้อมูลไม่ครบ','ระบุระดับชั้นและห้อง');return;}
           A.submit(btn,'loading');call('class.save',p).then(function(){invClasses();A.submit(btn,'success');A.ok('บันทึกสำเร็จ','');setTimeout(function(){A.closeModal();Routes['#/classes']();},700);}).catch(function(e){A.submit(btn,'error');A.err('ผิดพลาด',e.message);});
         });
@@ -480,7 +481,9 @@ function openStudentDetail(id){
         +'<div class="md-sec"><h4><i class="bi bi-people"></i> ข้อมูลครอบครัว</h4><div class="info-grid">'+infoRow('สถานภาพครอบครัว',lbl('family_status',v.family_status))+infoRow('อาศัยอยู่กับ',lbl('live_with',v.live_with))+infoRow('ผู้ปกครอง',v.guardian_name||'-')+infoRow('อาชีพ/รายได้',(v.guardian_occupation||'-')+' · '+money(v.household_income)+' บ./ด.')+infoRow('บัตรสวัสดิการแห่งรัฐ',(String(v.state_welfare)==='true'||v.state_welfare===true)?'มี':'ไม่มี')+infoRow('ภาระพึ่งพิง',depList,true)+'</div></div>'
         +'<div class="md-sec"><h4><i class="bi bi-house"></i> สภาพที่อยู่อาศัย</h4><div class="info-grid">'+infoRow('การอยู่อาศัย',lbl('house_own',sv.house_own))+infoRow('ที่ดินเกษตร',lbl('farmland',sv.farmland))+infoRow('แหล่งไฟฟ้า',lbl('electric',sv.electric))+infoRow('ห้องส้วม',sv.toilet?'มี':'ไม่มี')+'</div></div>'
         +'<div class="md-sec"><h4><i class="bi bi-clipboard-check"></i> ผลการเยี่ยม</h4><p>'+esc(v.findings||'-')+'</p>'+(v.recommendation?'<p class="muted">ข้อเสนอแนะ: '+esc(v.recommendation)+'</p>':'')+'</div>'
-        +(v.photo_url?'<div class="md-sec"><img src="'+esc(v.photo_url)+'" style="width:100%;border-radius:12px;cursor:pointer" data-lb="'+esc(v.photo_url)+'"></div>':'')
+        +(v.photo_house_out?'<div class="md-sec"><h4><i class="bi bi-image"></i> ภาพถ่ายนอกบ้าน</h4><img src="'+esc(v.photo_house_out)+'" style="width:100%;border-radius:12px;cursor:pointer" data-lb="'+esc(v.photo_house_out)+'"></div>':'')
+        +(v.photo_house_in?'<div class="md-sec"><h4><i class="bi bi-image"></i> ภาพถ่ายในบ้าน</h4><img src="'+esc(v.photo_house_in)+'" style="width:100%;border-radius:12px;cursor:pointer" data-lb="'+esc(v.photo_house_in)+'"></div>':'')
+        +(v.map_photo?'<div class="md-sec"><h4><i class="bi bi-map"></i> แผนที่บ้าน</h4><img src="'+esc(v.map_photo)+'" style="width:100%;border-radius:12px;cursor:pointer" data-lb="'+esc(v.map_photo)+'"></div>':'')
         +'</div>'
         +'<div class="modal-foot">'+(v.gps_lat?'<a class="btn btn-soft" href="https://maps.google.com/?q='+v.gps_lat+','+v.gps_lng+'" target="_blank"><i class="bi bi-geo-alt-fill"></i> แผนที่</a>':'')+'<button class="btn btn-soft" id="vd-print"><i class="bi bi-printer"></i> พิมพ์ กสศ.01</button>'+(can('visit.record')?'<button class="btn btn-ghost" id="vd-edit"><i class="bi bi-pencil"></i> แก้ไข</button>':'')+'<button class="btn btn-primary" data-close>ปิด</button></div>',
         onMount:function(bd){
@@ -503,7 +506,7 @@ function openStudentDetail(id){
       +'<div class="modal-body">'
       +sect('1. ข้อมูลนักเรียนและครอบครัว')
       +'<div class="field"><label>นักเรียน *</label><select class="input" id="vf-student"><option value="">— เลือกนักเรียน —</option></select></div>'
-      +'<div class="form-grid">'+fld('วันที่เยี่ยม','vf-date',v.visit_date||TH.iso(new Date()),'date')+fld('ภาคเรียน/ปี','vf-term',v.academic_term||('1/'+acYear()))
+      +'<div class="form-grid">'+fld('วันที่เยี่ยม','vf-date',v.visit_date||TH.iso(new Date()),'date')+fld('ภาคเรียน/ปี','vf-term',v.academic_term||('1/'+(Store.boot.settings ? Store.boot.settings.academic_year : '')))
       +'<div class="field"><label>สถานภาพครอบครัว</label><select class="input" id="vf-fstatus">'+Object.keys(m.family_status||{}).map(function(k){return '<option value="'+k+'" '+sel(v.family_status,k)+'>'+esc(m.family_status[k])+'</option>';}).join('')+'</select></div>'
       +'<div class="field"><label>นักเรียนอาศัยอยู่กับ</label><select class="input" id="vf-livewith">'+Object.keys(m.live_with||{}).map(function(k){return '<option value="'+k+'" '+sel(v.live_with,k)+'>'+esc(m.live_with[k])+'</option>';}).join('')+'</select></div>'
       +fld('ชื่อผู้ปกครอง','vf-gname',v.guardian_name)+fld('ความสัมพันธ์','vf-grel',v.guardian_relation)+fld('อาชีพผู้ปกครอง','vf-gocc',v.guardian_occupation)+fld('เบอร์โทร','vf-gphone',v.guardian_phone)+'</div>'
@@ -532,14 +535,19 @@ function openStudentDetail(id){
       +sect('7-8. ภาพถ่าย · GPS · บันทึกการเยี่ยม')
       +'<div class="form-grid"><div class="field"><label>ระดับความเสี่ยง</label><select class="input" id="vf-risk">'+Object.keys(m.risk_label||{}).map(function(k){return '<option value="'+k+'" '+sel(v.risk_level,k)+'>'+esc(m.risk_label[k])+'</option>';}).join('')+'</select></div>'
       +'<div class="field"><label>ผลคัดกรอง (override)</label><select class="input" id="vf-pov-sel"><option value="">— คำนวณอัตโนมัติ —</option>'+Object.keys(m.poverty_label||{}).map(function(k){return '<option value="'+k+'" '+sel(v.poverty_status,k)+'>'+esc(m.poverty_label[k])+'</option>';}).join('')+'</select></div></div>'
-      +'<div class="field full"><label>ภาพถ่ายที่พักอาศัย</label><input type="file" class="input" id="vf-photo" accept="image/*"><div id="vf-loc" class="muted" style="font-size:12px;margin-top:6px"></div></div>'
+      +'<div class="form-grid">'
+      +'<div class="field"><label>ภาพถ่ายนอกบ้าน (ทั้งหลัง)</label><input type="file" class="input" id="vf-photo-out" accept="image/*"><div id="prev-out" class="mt" style="font-size:12px;">'+(v.photo_house_out?'<img src="'+esc(v.photo_house_out)+'" style="height:60px;border-radius:8px;">':'')+'</div></div>'
+      +'<div class="field"><label>ภาพถ่ายในบ้าน</label><input type="file" class="input" id="vf-photo-in" accept="image/*"><div id="prev-in" class="mt" style="font-size:12px;">'+(v.photo_house_in?'<img src="'+esc(v.photo_house_in)+'" style="height:60px;border-radius:8px;">':'')+'</div></div>'
+      +'<div class="field full"><label>แผนที่บ้าน (ถ่ายรูป หรือแนบไฟล์)</label><input type="file" class="input" id="vf-map" accept="image/*"><div id="prev-map" class="mt" style="font-size:12px;">'+(v.map_photo?'<img src="'+esc(v.map_photo)+'" style="height:60px;border-radius:8px;">':'')+'</div><div id="vf-loc" class="muted" style="font-size:12px;margin-top:6px"></div></div>'
+      +'</div>'
       +'<div class="field full"><label>ผลการเยี่ยม</label><textarea class="input" id="vf-find">'+esc(v.findings||'')+'</textarea></div>'
       +'<div class="field full"><label>ข้อเสนอแนะ</label><textarea class="input" id="vf-rec">'+esc(v.recommendation||'')+'</textarea></div>'
       +'<label class="flex items-center gap-sm mt" style="cursor:pointer"><input type="checkbox" id="vf-consent"'+((String(v.consent)==='true'||v.consent===true||!v.id)?' checked':'')+'> ผู้ปกครอง/นักเรียนรับรองข้อมูลถูกต้อง</label>'
       +'</div>'
       +'<div class="modal-foot"><button class="btn btn-soft" id="vf-gps"><i class="bi bi-geo-alt"></i> พิกัด</button><button class="btn btn-ghost" data-close>ยกเลิก</button><button class="btn btn-primary" data-state="idle" id="vf-save"><span class="st st-idle"><i class="bi bi-check-lg"></i> บันทึก</span></button></div>',
       onMount:function(bd){
-        var gps={lat:v.gps_lat||'',lng:v.gps_lng||''};var photo='';
+        var gps={lat:v.gps_lat||'',lng:v.gps_lng||''}; 
+        var photoIn='', photoOut='', photoMap=''; // 👈 ประกาศตัวแปรรับรูป 3 ตัว
         call('student.list',{size:500}).then(function(d){$('#vf-student',bd).innerHTML='<option value="">— เลือกนักเรียน —</option>'+d.items.map(function(s){return '<option value="'+s.id+'" '+sel(v.student_id,s.id)+'>'+esc(s.full_name+' ('+s.class_label+')')+'</option>';}).join('');});
         function renderMembers(){
           $('#vf-members',bd).innerHTML='<div class="tbl-wrap"><table class="tbl"><thead><tr><th>ชื่อ-สกุล</th><th>ความสัมพันธ์</th><th>อายุ</th><th>รายได้/เดือน</th><th>พิการ</th><th>โรคเรื้อรัง</th><th></th></tr></thead><tbody>'+Store.__vMembers.map(function(mm,i){return '<tr><td><input class="input vm" data-i="'+i+'" data-k="name" value="'+esc(mm.name||'')+'" style="padding:6px;min-width:110px"></td><td><input class="input vm" data-i="'+i+'" data-k="relation" value="'+esc(mm.relation||'')+'" style="padding:6px;width:90px"></td><td><input class="input vm" data-i="'+i+'" data-k="age" type="number" value="'+esc(mm.age||'')+'" style="padding:6px;width:60px"></td><td><input class="input vm vm-inc" data-i="'+i+'" data-k="income" type="number" value="'+esc(mm.income||'')+'" style="padding:6px;width:90px"></td><td style="text-align:center"><input type="checkbox" class="vm-cb" data-i="'+i+'" data-k="disabled"'+(mm.disabled?' checked':'')+'></td><td style="text-align:center"><input type="checkbox" class="vm-cb" data-i="'+i+'" data-k="chronic"'+(mm.chronic?' checked':'')+'></td><td><button type="button" class="btn btn-sm btn-ghost vm-del" data-i="'+i+'"><i class="bi bi-x"></i></button></td></tr>';}).join('')+'</tbody></table></div>';
@@ -558,7 +566,9 @@ function openStudentDetail(id){
         renderMembers();if(!$('#vf-size',bd).value)$('#vf-size',bd).value=Store.__vMembers.length;recalc();
         $('#vf-addmem',bd).addEventListener('click',function(){Store.__vMembers.push({name:'',relation:'',age:'',income:'',disabled:false,chronic:false});renderMembers();});
         $('#vf-size',bd).addEventListener('input',recalc);
-        $('#vf-photo',bd).addEventListener('change',function(e){A.fileToDataUrl(e.target.files[0],1000).then(function(dd){photo=dd;});});
+        $('#vf-photo-in',bd).addEventListener('change',function(e){A.fileToDataUrl(e.target.files[0],1000).then(function(dd){photoIn=dd; $('#prev-in',bd).innerHTML='<img src="'+dd+'" style="height:60px;border-radius:8px;">';});});
+        $('#vf-photo-out',bd).addEventListener('change',function(e){A.fileToDataUrl(e.target.files[0],1000).then(function(dd){photoOut=dd; $('#prev-out',bd).innerHTML='<img src="'+dd+'" style="height:60px;border-radius:8px;">';});});
+        $('#vf-map',bd).addEventListener('change',function(e){A.fileToDataUrl(e.target.files[0],1000).then(function(dd){photoMap=dd; $('#prev-map',bd).innerHTML='<img src="'+dd+'" style="height:60px;border-radius:8px;">';});});
         $('#vf-gps',bd).addEventListener('click',function(){if(!navigator.geolocation){A.err('อุปกรณ์ไม่รองรับ GPS','');return;}A.info('กำลังระบุพิกัด…','');navigator.geolocation.getCurrentPosition(function(pos){gps.lat=pos.coords.latitude.toFixed(6);gps.lng=pos.coords.longitude.toFixed(6);$('#vf-loc',bd).innerHTML='<i class="bi bi-check-circle-fill" style="color:var(--ok)"></i> '+gps.lat+', '+gps.lng;A.ok('ระบุพิกัดสำเร็จ','');},function(){A.err('ระบุพิกัดไม่ได้','');});});
         if(gps.lat)$('#vf-loc',bd).innerHTML='พิกัดเดิม: '+gps.lat+', '+gps.lng;
         function rd(name){var el=bd.querySelector('input[name="'+name+'"]:checked');return el?el.value:'';}
@@ -567,38 +577,123 @@ function openStudentDetail(id){
           var survey={dependency:ck('dependency'),house_own:rd('vr_house'),floor:ck('floor'),wall:ck('wall'),roof:ck('roof'),toilet:$('#vf-toilet',bd).checked,farmland:rd('vr_farm'),water:ck('water'),electric:rd('vr_elec'),vehicles:ck('vehicles'),appliances:ck('appliances')};
           var p={id:v.id,student_id:val('vf-student'),visit_date:val('vf-date'),academic_term:val('vf-term'),family_status:val('vf-fstatus'),live_with:val('vf-livewith'),guardian_name:val('vf-gname'),guardian_relation:val('vf-grel'),guardian_occupation:val('vf-gocc'),guardian_phone:val('vf-gphone'),state_welfare:$('#vf-welfare',bd).checked,household_size:val('vf-size'),members:Store.__vMembers,survey:survey,travel:{method:val('vf-travel'),distance:val('vf-dist'),cost:val('vf-cost'),daily:val('vf-daily')},addr:{house_no:val('vf-hno'),moo:val('vf-moo'),tambon:val('vf-tambon'),amphoe:val('vf-amphoe'),province:val('vf-prov'),zipcode:val('vf-zip')},address:val('vf-addr'),risk_level:val('vf-risk'),poverty_status:val('vf-pov-sel'),findings:val('vf-find'),recommendation:val('vf-rec'),consent:$('#vf-consent',bd).checked,gps_lat:gps.lat,gps_lng:gps.lng};
           if(!p.student_id){A.err('เลือกนักเรียน','');return;}
-          if(photo)p.photo=photo;
+          
+          if(photoIn) p.photo_house_in = photoIn; else p.photo_house_in_url = v.photo_house_in;
+          if(photoOut) p.photo_house_out = photoOut; else p.photo_house_out_url = v.photo_house_out;
+          if(photoMap) p.map_photo = photoMap; else p.map_photo_url = v.map_photo;
+
           A.run(this,{loading:'กำลังบันทึก…'},function(){return call('visit.save',p);}).then(function(){A.closeModal();Routes['#/visits']();}).catch(function(){});
         });
       }
     });
   }
   function printKsForm(v){
-    var m=Store.__visitMeta||{};var sv=v.survey||{};var dep=sv.dependency||{};var addr=v.addr||{};var tr=v.travel||{};var s=v.student||{};
-    function lbl(g,k){return (m[g]&&m[g][k])||k||'-';}
-    function checkLine(group,obj){return Object.keys(m[group]||{}).map(function(k){return (obj&&obj[k]?'☑':'☐')+' '+m[group][k];}).join('  ');}
-    // รองรับทั้ง object {key:true} และ string (กันข้อมูลผิดรูป)
-    function multi(group,val){if(!val)return '-';if(typeof val==='string')return lbl(group,val);var ks=Object.keys(val).filter(function(k){return val[k];});return ks.length?ks.map(function(k){return lbl(group,k);}).join(', '):'-';}
-    var memberRows=(v.members||[]).map(function(mm,i){return '<tr><td class="pr-c">'+(i+1)+'</td><td>'+esc(mm.name||'')+'</td><td>'+esc(mm.relation||'')+'</td><td class="pr-c">'+esc(mm.age||'')+'</td><td class="pr-r">'+money(mm.income||0)+'</td><td class="pr-c">'+(mm.disabled?'✔':'')+'</td><td class="pr-c">'+(mm.chronic?'✔':'')+'</td></tr>';}).join('')||'<tr><td colspan="7" class="pr-c">-</td></tr>';
-    var body='<div class="pr-stats"><div class="pr-stat"><div class="v">'+money(v.income_per_capita)+'</div><div class="l">รายได้เฉลี่ย/คน/เดือน</div></div><div class="pr-stat"><div class="v">'+esc(v.poverty_label)+'</div><div class="l">ผลการคัดกรอง</div></div><div class="pr-stat"><div class="v">'+num(v.household_size)+'</div><div class="l">สมาชิกครัวเรือน</div></div></div>'
-      +'<div class="pr-section">1. ข้อมูลนักเรียนและครอบครัว</div><table class="pr-table"><tbody>'
-      +'<tr><th style="width:120px">ชื่อนักเรียน</th><td>'+esc(v.student_name)+'</td><th style="width:90px">ชั้น/เลขที่</th><td>'+esc(v.class_label)+' / '+esc(s.number||'')+'</td></tr>'
-      +'<tr><th>สถานภาพครอบครัว</th><td>'+esc(lbl('family_status',v.family_status))+'</td><th>อาศัยกับ</th><td>'+esc(lbl('live_with',v.live_with))+'</td></tr>'
-      +'<tr><th>ผู้ปกครอง</th><td>'+esc(v.guardian_name||'-')+' ('+esc(v.guardian_relation||'-')+')</td><th>อาชีพ</th><td>'+esc(v.guardian_occupation||'-')+'</td></tr>'
-      +'<tr><th>บัตรสวัสดิการแห่งรัฐ</th><td>'+((String(v.state_welfare)==='true'||v.state_welfare===true)?'☑ ได้รับ':'☐ ไม่ได้รับ')+'</td><th>ภาคเรียน</th><td>'+esc(v.academic_term||'-')+'</td></tr></tbody></table>'
-      +'<div class="pr-section">2. สมาชิกในครัวเรือนและรายได้</div><table class="pr-table"><thead><tr><th class="pr-c">ที่</th><th>ชื่อ-สกุล</th><th>ความสัมพันธ์</th><th class="pr-c">อายุ</th><th class="pr-r">รายได้/เดือน</th><th class="pr-c">พิการ</th><th class="pr-c">โรคเรื้อรัง</th></tr></thead><tbody>'+memberRows
-      +'<tr style="background:#FBF5E3"><td colspan="4" class="pr-r"><b>รวมรายได้ครัวเรือน · เฉลี่ยต่อคน</b></td><td class="pr-r"><b>'+money(v.household_income)+'</b></td><td colspan="2" class="pr-c"><b>'+money(v.income_per_capita)+'</b></td></tr></tbody></table>'
-      +'<div class="pr-section">3. สถานะของครัวเรือน</div><table class="pr-table"><tbody>'
-      +'<tr><th style="width:120px">ภาระพึ่งพิง</th><td>'+checkLine('dependency',dep)+'</td></tr>'
-      +'<tr><th>การอยู่อาศัย</th><td>'+esc(lbl('house_own',sv.house_own))+' · ห้องส้วม: '+(sv.toilet?'มี':'ไม่มี')+'</td></tr>'
-      +'<tr><th>วัสดุ พื้น/ฝา/หลังคา</th><td>'+esc(multi('floor',sv.floor))+' / '+esc(multi('wall',sv.wall))+' / '+esc(multi('roof',sv.roof))+'</td></tr>'
-      +'<tr><th>ที่ดินเกษตร / ไฟฟ้า / น้ำดื่ม</th><td>'+esc(lbl('farmland',sv.farmland))+' / '+esc(lbl('electric',sv.electric))+' / '+esc(multi('water',sv.water))+'</td></tr>'
-      +'<tr><th>ยานพาหนะ / ของใช้</th><td>'+esc(multi('vehicles',sv.vehicles))+' / '+esc(multi('appliances',sv.appliances))+'</td></tr></tbody></table>'
-      +'<div class="pr-section">5-6. การเดินทาง และที่ตั้งที่พักอาศัย</div><table class="pr-table"><tbody><tr><th style="width:120px">การเดินทาง</th><td>'+esc(lbl('travel',tr.method))+(tr.distance?' · '+tr.distance+' กม.':'')+(tr.cost?' · '+money(tr.cost)+' บ./ด.':'')+'</td></tr><tr><th>ที่อยู่</th><td>'+esc((addr.house_no?'บ้านเลขที่ '+addr.house_no:'')+(addr.moo?' หมู่ '+addr.moo:'')+(addr.tambon?' ต.'+addr.tambon:'')+(addr.amphoe?' อ.'+addr.amphoe:'')+(addr.province?' จ.'+addr.province:'')+(addr.zipcode?' '+addr.zipcode:'')||v.address||'-')+'</td></tr></tbody></table>'
-      +(v.photo_url?'<div class="pr-section">7. ภาพถ่ายที่พักอาศัย</div><div class="pr-c"><img src="'+esc(v.photo_url)+'" style="max-width:60%;max-height:240px;border:1px solid #EFE3C2;border-radius:8px"></div>':'')
-      +(v.findings?'<div class="pr-section">ผลการเยี่ยมบ้าน</div><p>'+esc(v.findings)+'</p>'+(v.recommendation?'<p>ข้อเสนอแนะ: '+esc(v.recommendation)+'</p>':''):'')
-      +'<div style="margin-top:14px;font-size:11px;color:#8A8270">หมายเหตุ: ข้าพเจ้าขอรับรองว่าข้อมูลในแบบขอรับเงินอุดหนุนนักเรียนยากจนฉบับนี้เป็นข้อมูลที่ถูกต้องเป็นจริง · ครูผู้เยี่ยมบ้านได้แจ้งวัตถุประสงค์การขอข้อมูลแก่ผู้ให้ข้อมูลเรียบร้อยแล้ว</div>';
-    A.printDoc({pill:'แบบ นร./กสศ.01',title:'แบบขอรับเงินอุดหนุนนักเรียนยากจน',subtitle:v.student_name+' · ชั้น '+v.class_label+(v.academic_term?' · '+v.academic_term:''),docNo:'กสศ.01-'+(v.student_code||''),watermark:'กสศ.01',content:body,signatures:[{role:'นักเรียน/ผู้ปกครอง'},{role:'ครูผู้เยี่ยมบ้าน/เจ้าหน้าที่รัฐ',name:v.visitor_name},{role:'ผู้อำนวยการสถานศึกษา'}]});
+    var m=Store.__visitMeta||{}; var sv=v.survey||{}; var dep=sv.dependency||{};
+    var addr=v.addr||{}; var tr=v.travel||{}; var s=v.student||{};
+
+    // Helper สำหรับ Checkbox และ Label แบบ กสศ.
+    function ck(cond){ return cond ? '<span style="font-size:18pt;">☑</span>' : '<span style="font-size:18pt;">☐</span>'; }
+    function lbl(g,k){ return (m[g]&&m[g][k])||k||'..........................'; }
+
+    // แปลงสมาชิกในครอบครัวเป็นตาราง
+    var memberRows = (v.members||[]).map(function(mm,i){
+       return '<tr><td style="text-align:center;">'+(i+1)+'</td><td>'+esc(mm.name||'')+'</td><td>'+esc(mm.relation||'')+'</td><td style="text-align:center;">'+esc(mm.age||'')+'</td><td style="text-align:right;">'+money(mm.income||0)+'</td><td style="text-align:center;">'+(mm.disabled?'☑':'☐')+'</td><td style="text-align:center;">'+(mm.chronic?'☑':'☐')+'</td></tr>';
+    }).join('');
+    if(!memberRows) memberRows = '<tr><td colspan="7" style="text-align:center;">- ไม่มีข้อมูลสมาชิก -</td></tr>';
+
+    /* ── 1. กำหนด CSS บังคับฟอนต์ TH Sarabun PSK และระยะขอบ ── */
+    var customCss = '<style>'
+      + '@page { size: A4 portrait; margin: 15mm; }'
+      + 'body.pr-doc, .pr-page { background: #ffffff !important; color: #000000 !important; font-family: "TH Sarabun PSK", "TH Sarabun New", sans-serif !important; font-size: 16pt !important; line-height: 1.0 !important; box-shadow: none !important; }'
+      + '.pr-watermark, .pr-header, .pr-title-block, .pr-footer { display: none !important; }' /* ปิดส่วนประกอบ UI ของระบบเดิม ทิ้งไว้แค่ toolbar */
+      + '.ks-page { page-break-after: always; padding: 10px 20px; width: 100%; box-sizing: border-box; }'
+      + '.ks-page:last-child { page-break-after: auto; }'
+      + '.ks-title { font-size: 20pt; font-weight: bold; text-align: center; margin-bottom: 20px; }'
+      + '.ks-section { font-size: 18pt; font-weight: bold; margin: 20px 0 10px 0; text-decoration: underline; }'
+      + '.ks-tbl { width: 100%; border-collapse: collapse; margin-bottom: 10px; }'
+      + '.ks-tbl th, .ks-tbl td { border: 1px solid #000; padding: 6px; font-size: 16pt; text-align: left; vertical-align: middle; }'
+      + '.ks-photo-box { width: 100%; height: 260px; border: 1px solid #000; display: flex; align-items: center; justify-content: center; color: #666; margin-bottom: 15px; }'
+      + '.ks-sign { text-align: center; margin-top: 40px; }'
+      + '.ks-row { display: flex; gap: 15px; margin-bottom: 5px; }'
+      + '@media print { .pr-toolbar { display: none !important; } .pr-page { margin: 0 !important; padding: 0 !important; } }'
+      + '</style>';
+
+    /* ── หน้า 1: ข้อมูลนักเรียนและผู้ปกครอง ── */
+    var page1 = '<div class="ks-page">'
+      + '<div class="ks-title">แบบขอรับเงินอุดหนุนนักเรียนยากจน (นร.01)</div>'
+      + '<div class="ks-section">ส่วนที่ 1: ข้อมูลนักเรียน</div>'
+      + '<table class="ks-tbl">'
+      + '<tr><td colspan="2">ชื่อ-นามสกุล: '+esc(v.student_name)+'</td><td>ชั้น: '+esc(v.class_label)+'</td><td>เลขที่: '+esc(s.number||'-')+'</td></tr>'
+      + '<tr><td colspan="4">เลขประจำตัวประชาชนนักเรียน: '+esc(s.id_card||'-')+'</td></tr>'
+      + '<tr><td colspan="4">ที่อยู่: '+esc(v.address||'-')+'</td></tr>'
+      + '</table>'
+      + '<div class="ks-section">ส่วนที่ 2: ข้อมูลครอบครัว</div>'
+      + '<p><b>1. สถานภาพบิดามารดา:</b> '+lbl('family_status',v.family_status)+'</p>'
+      + '<p><b>2. นักเรียนอาศัยอยู่กับ:</b> '+lbl('live_with',v.live_with)+'</p>'
+      + '<table class="ks-tbl" style="margin-top:10px;">'
+      + '<tr><td colspan="2">ชื่อ-นามสกุล ผู้ปกครอง: '+esc(v.guardian_name||'-')+'</td><td colspan="2">ความสัมพันธ์กับนักเรียน: '+esc(v.guardian_relation||'-')+'</td></tr>'
+      + '<tr><td colspan="4">อาชีพ: '+esc(v.guardian_occupation||'-')+' &nbsp;&nbsp;&nbsp; เบอร์โทรศัพท์: '+esc(v.guardian_phone||'-')+'</td></tr>'
+      + '<tr><td colspan="4">บัตรสวัสดิการแห่งรัฐ: '+((String(v.state_welfare)==='true'||v.state_welfare===true)?'☑ มี':'☐ ไม่มี')+'</td></tr>'
+      + '</table></div>';
+
+    /* ── หน้า 2: ตารางสมาชิกในครัวเรือน ── */
+    var page2 = '<div class="ks-page">'
+      + '<div class="ks-section">ส่วนที่ 3: ข้อมูลสมาชิกในครัวเรือนและรายได้</div>'
+      + '<table class="ks-tbl"><thead><tr><th style="width:5%;text-align:center;">ที่</th><th>ชื่อ-นามสกุล</th><th>ความสัมพันธ์</th><th style="width:10%;text-align:center;">อายุ</th><th style="width:18%;text-align:right;">รายได้/เดือน (บาท)</th><th style="width:8%;text-align:center;">พิการ</th><th style="width:12%;text-align:center;">โรคเรื้อรัง</th></tr></thead>'
+      + '<tbody>'+memberRows+'</tbody>'
+      + '<tfoot><tr><th colspan="4" style="text-align:right;">รวมรายได้ครัวเรือนทั้งหมด</th><th style="text-align:right;">'+money(v.household_income)+'</th><th colspan="2">บาท/เดือน</th></tr>'
+      + '<tr><th colspan="4" style="text-align:right;">เฉลี่ยรายได้ต่อคน</th><th style="text-align:right;">'+money(v.income_per_capita)+'</th><th colspan="2">บาท/คน/เดือน</th></tr></tfoot>'
+      + '</table>'
+      + '<p style="text-align:right; margin-top:10px;"><b>ผลการคัดกรอง:</b> '+esc(v.poverty_label)+'</p>'
+      + '</div>';
+
+    /* ── หน้า 3: สถานะครัวเรือน ── */
+    var page3 = '<div class="ks-page">'
+      + '<div class="ks-section">ส่วนที่ 4: สถานะของครัวเรือน (ความยากจน)</div>'
+      + '<p><b>4.1 ครัวเรือนมีภาระพึ่งพิงหรือไม่:</b></p><div style="margin-left: 20px;">'
+      + Object.keys(m.dependency||{}).map(function(k){ return '<p>'+ck(dep[k])+' '+m.dependency[k]+'</p>'; }).join('')
+      + '</div>'
+      + '<p style="margin-top:15px;"><b>4.2 การอยู่อาศัย:</b> '+lbl('house_own',sv.house_own)+'</p>'
+      + '<p><b>4.3 ลักษณะที่อยู่อาศัย (วัสดุที่ใช้มากที่สุด):</b></p>'
+      + '<p style="margin-left: 20px;">- พื้น: '+(sv.floor?Object.keys(sv.floor).map(function(k){return m.floor[k]||k;}).join(', '):'-')+'</p>'
+      + '<p style="margin-left: 20px;">- ฝาผนัง: '+(sv.wall?Object.keys(sv.wall).map(function(k){return m.wall[k]||k;}).join(', '):'-')+'</p>'
+      + '<p style="margin-left: 20px;">- หลังคา: '+(sv.roof?Object.keys(sv.roof).map(function(k){return m.roof[k]||k;}).join(', '):'-')+'</p>'
+      + '<p><b>4.4 ห้องส้วมในที่อยู่อาศัย:</b> '+(sv.toilet?'☑ มี':'☐ ไม่มี')+'</p>'
+      + '<p><b>4.5 แหล่งน้ำดื่ม:</b> '+(sv.water?Object.keys(sv.water).map(function(k){return m.water[k]||k;}).join(', '):'-')+'</p>'
+      + '<p><b>4.6 แหล่งไฟฟ้า:</b> '+lbl('electric',sv.electric)+'</p>'
+      + '</div>';
+
+    /* ── หน้า 4: พาหนะ ของใช้ การเดินทาง และแผนที่ ── */
+    var page4 = '<div class="ks-page">'
+      + '<p><b>4.7 ยานพาหนะในครัวเรือน:</b> '+(sv.vehicles?Object.keys(sv.vehicles).map(function(k){return m.vehicles[k]||k;}).join(', '):'ไม่มี')+'</p>'
+      + '<p><b>4.8 ของใช้ในครัวเรือน:</b> '+(sv.appliances?Object.keys(sv.appliances).map(function(k){return m.appliances[k]||k;}).join(', '):'ไม่มี')+'</p>'
+      + '<p><b>4.9 ที่ดินทำการเกษตร:</b> '+lbl('farmland',sv.farmland)+'</p>'
+      + '<div class="ks-section" style="margin-top:30px;">ส่วนที่ 5: การเดินทางและแผนที่</div>'
+      + '<p><b>วิธีการเดินทางหลัก:</b> '+lbl('travel',tr.method)+' &nbsp; <b>ระยะทาง:</b> '+esc(tr.distance||0)+' กม. &nbsp; <b>ค่าใช้จ่าย:</b> '+money(tr.cost)+' บาท/เดือน</p>'
+      + '<p><b>แผนที่หรือพิกัดที่พักอาศัย:</b> '+(v.gps_lat ? (v.gps_lat+', '+v.gps_lng) : '')+'</p>'
+      + (v.map_photo ? '<div style="text-align:center;"><img src="'+esc(v.map_photo)+'" style="max-height:250px; border:1px solid #000;"></div>' : '<div class="ks-photo-box">วาดแผนที่ หรือ นำภาพแผนที่มาติด</div>')
+      + '</div>';
+
+    /* ── หน้า 5: รูปถ่ายและลายเซ็นรับรอง ── */
+    var page5 = '<div class="ks-page">'
+      + '<div class="ks-section">ส่วนที่ 6: ภาพถ่ายที่อยู่อาศัย</div>'
+      + '<div class="ks-row">'
+      + '<div style="flex:1;">'+(v.photo_house_out ? '<img src="'+esc(v.photo_house_out)+'" style="width:100%;height:260px;object-fit:cover;border:1px solid #000;">' : '<div class="ks-photo-box">ภาพถ่ายนอกบ้าน (ให้เห็นตัวบ้านทั้งหลัง)</div>')+'</div>'
+      + '<div style="flex:1;">'+(v.photo_house_in ? '<img src="'+esc(v.photo_house_in)+'" style="width:100%;height:260px;object-fit:cover;border:1px solid #000;">' : '<div class="ks-photo-box">ภาพถ่ายในบ้าน</div>')+'</div>'
+      + '</div>'
+      + '<div class="ks-section">ส่วนที่ 7: คำรับรอง</div>'
+      + '<p style="text-indent: 40px;">ข้าพเจ้าขอรับรองว่าข้อมูลในแบบฟอร์มนี้เป็นความจริงทุกประการ หากตรวจสอบภายหลังพบว่าเป็นเท็จ ข้าพเจ้ายินยอมให้ทางสถานศึกษาระงับสิทธิ์การรับทุน</p>'
+      + '<table style="width:100%; border:none; margin-top:30px;">'
+      + '<tr><td class="ks-sign">ลงชื่อ.............................................................<br>('+esc(v.guardian_name||'......................................................')+')<br>ผู้ปกครองนักเรียน</td>'
+      + '<td class="ks-sign">ลงชื่อ.............................................................<br>('+esc(v.visitor_name||'......................................................')+')<br>ครูผู้เยี่ยมบ้าน / เจ้าหน้าที่รัฐ</td></tr>'
+      + '<tr><td colspan="2" class="ks-sign" style="padding-top:50px;">ลงชื่อ.............................................................<br>(......................................................)<br>ผู้อำนวยการสถานศึกษา</td></tr>'
+      + '</table></div>';
+
+    // รวม 5 หน้าเข้าด้วยกัน
+    var content = customCss + page1 + page2 + page3 + page4 + page5;
+    
+    // เรียกใช้ Print Framework เดิม แต่ปิดองค์ประกอบที่ไม่ใช่เนื้อหาทิ้ง
+    A.printDoc({ title: 'แบบฟอร์ม นร.01', content: content });
   }
 
   /* ════════════════ ANNOUNCEMENTS ═══════════════════════════ */
@@ -697,9 +792,9 @@ function openStudentDetail(id){
     call('user.list',{}).then(function(d){
       Store.__users=d.items;
       var byRole={};(Store.boot.roles||{});d.items.forEach(function(u){byRole[u.role]=(byRole[u.role]||0)+1;});
-      page().innerHTML=hero({pill:'ผู้ดูแลระบบ',pill_icon:'person-gear',title:'บัญชีผู้ใช้',sub:'จัดการผู้ใช้งานและสิทธิ์การเข้าถึง',deco:'people-fill',kpis:[
-        {icon:'shield-lock-fill',value:num(byRole.admin||0),label:'ผู้ดูแล'},{icon:'person-badge-fill',value:num(byRole.homeroom||0),label:'ครูประจำชั้น'},
-        {icon:'easel2-fill',value:num(byRole.teacher||0),label:'ครูผู้สอน'}
+      page().innerHTML=hero({pill:'ผู้บริหาร',pill_icon:'person-gear',title:'บัญชีผู้ใช้',sub:'จัดการผู้ใช้งานและสิทธิ์การเข้าถึง',deco:'people-fill',kpis:[
+        {icon:'shield-lock-fill',value:num(byRole.admin||0),label:'ผู้บริหาร'},
+        {icon:'easel2-fill',value:num(byRole.teacher||0),label:'ครู'}
       ]})
       +'<div class="toolbar"><div class="search"><i class="bi bi-search"></i><input id="us-q" placeholder="ค้นหาผู้ใช้"></div>'
       +'<select class="tb-select" id="us-role"><option value="">ทุกบทบาท</option>'+Object.keys(Store.boot.roles||{}).map(function(k){return '<option value="'+k+'">'+esc(Store.boot.roles[k])+'</option>';}).join('')+'</select>'
@@ -729,7 +824,7 @@ function openUserForm(u){
       '<div class="modal-head grad"><div class="mh-ic"><i class="bi bi-person-gear"></i></div><h3>'+(edit?'แก้ไขผู้ใช้':'เพิ่มผู้ใช้')+'</h3><button class="modal-x" data-close><i class="bi bi-x-lg"></i></button></div>'
       +'<div class="modal-body"><div class="form-grid">'
       +fld('ชื่อผู้ใช้ *','uf-username',u.username)
-      +'<div class="field"><label>บทบาท *</label><select class="input" id="uf-role">'+['admin','homeroom','teacher'].map(function(k){return '<option value="'+k+'" '+sel(u.role,k)+'>'+esc(roles[k])+'</option>';}).join('')+'</select></div>'
+      +'<div class="field"><label>บทบาท *</label><select class="input" id="uf-role">'+['admin','teacher'].map(function(k){return '<option value="'+k+'" '+sel(u.role,k)+'>'+esc(roles[k])+'</option>';}).join('')+'</select></div>'
       +fld('ชื่อ-นามสกุล *','uf-name',u.full_name)+fld('อีเมล','uf-email',u.email)
       +fld('เบอร์โทร','uf-phone',u.phone)
       +'<div class="field"><label>สถานะ</label><select class="input" id="uf-status"><option value="active" '+sel(isActive,true)+'>ใช้งาน</option><option value="inactive" '+sel(!isActive,true)+'>ปิดใช้งาน</option></select></div>'
@@ -926,17 +1021,30 @@ function openUserForm(u){
   function cfgGte(d){return TH.iso(d)>=TH.iso(new Date());}
   function openEventForm(e){
     e=e||{};var types=Store.__exMeta.event_types;
+    var tStart = '', tEnd = '';
+    // แยกเวลาเริ่มและเวลาสิ้นสุดเพื่อแสดงในช่องเลือกเวลา
+    if(e.time) { 
+      var ts = String(e.time).split('-'); 
+      tStart = (ts[0]||'').trim(); 
+      tEnd = (ts[1]||'').trim(); 
+    }
     A.modal({html:
       '<div class="modal-head grad"><div class="mh-ic"><i class="bi bi-calendar-event"></i></div><h3>'+(e.id?'แก้ไขกิจกรรม':'เพิ่มกิจกรรม')+'</h3><button class="modal-x" data-close><i class="bi bi-x-lg"></i></button></div>'
       +'<div class="modal-body">'+fld('ชื่อกิจกรรม *','ev-title',e.title)
       +'<div class="form-grid"><div class="field"><label>ประเภท</label><select class="input" id="ev-type">'+Object.keys(types).map(function(k){return '<option value="'+k+'" '+sel(e.event_type,k)+'>'+esc(types[k].label)+'</option>';}).join('')+'</select></div>'
-      +fld('วันที่ *','ev-date',e.event_date||TH.iso(new Date()),'date')+fld('เวลา','ev-time',e.time)+fld('สถานที่','ev-loc',e.location)+'</div>'
+      +fld('วันที่ *','ev-date',e.event_date||TH.iso(new Date()),'date')
+      +'<div class="field"><label>ช่วงเวลา</label><div class="flex items-center gap-sm"><input type="time" class="input" id="ev-time-start" value="'+esc(tStart)+'"><span class="muted">-</span><input type="time" class="input" id="ev-time-end" value="'+esc(tEnd)+'"></div></div>'
+      +fld('สถานที่','ev-loc',e.location)+'</div>'
       +'<div class="field"><label>กลุ่มเป้าหมาย</label><select class="input" id="ev-target"><option value="all" '+sel(e.target_role,'all')+'>ทุกคน</option><option value="teacher" '+sel(e.target_role,'teacher')+'>ครูผู้สอน</option></select></div>'
       +'<div class="field full"><label>รายละเอียด</label><textarea class="input" id="ev-desc">'+esc(e.description||'')+'</textarea></div></div>'
       +'<div class="modal-foot">'+(e.id?'<button class="btn btn-danger" id="ev-del"><i class="bi bi-trash"></i></button>':'')+'<button class="btn btn-ghost" data-close>ยกเลิก</button><button class="btn btn-primary" data-state="idle" id="ev-save"><span class="st st-idle"><i class="bi bi-check-lg"></i> บันทึก</span></button></div>',
       onMount:function(bd){
         $('#ev-save',bd).addEventListener('click',function(){
-          var p={id:e.id,title:val('ev-title'),event_type:val('ev-type'),event_date:val('ev-date'),time:val('ev-time'),location:val('ev-loc'),target_role:val('ev-target'),description:val('ev-desc')};
+          // นำเวลาที่เลือก 2 ช่องมาเชื่อมกันเป็นรูปแบบ 08:30-16:00
+          var t1 = val('ev-time-start'), t2 = val('ev-time-end');
+          var tStr = (t1 && t2) ? (t1 + '-' + t2) : (t1 || t2 || '');
+          
+          var p={id:e.id,title:val('ev-title'),event_type:val('ev-type'),event_date:val('ev-date'),time:tStr,location:val('ev-loc'),target_role:val('ev-target'),description:val('ev-desc')};
           if(!p.title||!p.event_date){A.err('กรอกข้อมูลไม่ครบ','');return;}
           A.run(this,{loading:'กำลังบันทึก…'},function(){return call('event.save',p);}).then(function(){A.closeModal();Routes['#/calendar']();}).catch(function(){});
         });
