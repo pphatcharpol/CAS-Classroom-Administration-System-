@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- * CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
+ * SAS · ระบบบริหารจัดการสถานศึกษา (School Administration System)
  * File:        10_Seed.gs — นำเข้าข้อมูลจริง (ครู · ชั้นเรียน · นักเรียน)
  * Version:     1.0.1
  * Last Update: 2026-06-05
@@ -23,11 +23,11 @@ function Seed_run() {
     Seed_clear_(false);
 
     // ── Settings ──
-    Settings_set('school_name', APP.ORG);
-    Settings_set('school_motto', APP.MOTTO);
-    Settings_set('academic_year', cfg_academicYear_());
+    Settings_set('school_name', 'โรงเรียนวังน้ำคู้ศึกษา');
+    Settings_set('school_motto', 'ปัญญาเป็นแสงสว่างแห่งโลก');
+    Settings_set('academic_year', '2569');
 
-    var year = cfg_academicYear_();
+    var year = '2569';
 // ── 1. STAFF (ผู้บริหารและครู) ──
     var STAFF = [
       { u: 't1', pw: '123456', name: 'นายสุขุมพัฒน์ กันธะมา', role: 'teacher', level: 'ม.1', room: '1', title: 'นาย' },
@@ -296,7 +296,8 @@ function Seed_run() {
           student_id: s.id, class_id: s.class_id,
           visit_date: cfg_dateOnly_(new Date(Date.now() - _randInt_(5, 60) * 864e5)),
           address: s.address, gps_lat: (13 + Math.random()).toFixed(6), gps_lng: (100 + Math.random()).toFixed(6),
-          photo_url: '', family_status: _rand_(['together', 'separated', 'divorced', 'father_dead']),
+          photo_house_in: '', photo_house_out: '', map_photo: '', /* 👈 อัปเดต seed */
+          family_status: _rand_(['together', 'separated', 'divorced', 'father_dead']),
           economic_status: _rand_(['good', 'moderate', 'poor']),
           risk_level: risk, findings: 'สภาพแวดล้อมเหมาะสมต่อการเรียนรู้',
           recommendation: 'ติดตามผลการเรียนอย่างต่อเนื่อง', visited_by: 'system', status: 'active',
