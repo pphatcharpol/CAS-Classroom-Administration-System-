@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
+ *  SAS · ระบบบริหารจัดการสถานศึกษา (School Administration System)
  *  File:        Code.gs — Web entry (doGet) · include() · inline boot state
  *  Version:     1.0.0
  *  Last Update: 2026-05-30
