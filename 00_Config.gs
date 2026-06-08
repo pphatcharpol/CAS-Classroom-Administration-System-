@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
+ *  SAS · ระบบบริหารจัดการสถานศึกษา (School Administration System)
  *  File:        00_Config.gs — ค่าคงที่ · Schemas · RBAC · Helpers (Single Source of Truth)
  *  Version:     0.0.1
  *  Last Update: 2026-05-30
@@ -14,22 +14,22 @@
  *  ใช้ร่วมกันทั้ง doGet · Sheet Menu · About · Footer · Client boot
  *  ─────────────────────────────────────────────────────────────── */
 var APP = {
-  SHORT:        'CAS',
-  NAME:         'CAS · ระบบงานธุรการชั้นเรียน',
-  TITLE:        'ระบบงานธุรการชั้นเรียน',
-  DESCRIPTION:  'ระบบบริหารงานธุรการชั้นเรียน — ข้อมูลนักเรียน · เช็กชื่อ · เยี่ยมบ้าน · ตารางเรียน · ประกาศและรายงาน สำหรับโรงเรียนมัธยมศึกษา',
+  SHORT:        'SAS',
+  NAME:         'SAS · ระบบบริหารจัดการสถานศึกษา',
+  TITLE:        'ระบบบริหารจัดการสถานศึกษา โรงเรียนวังน้ำคู้ศึกษา',
+  DESCRIPTION:  'ระบบบริหารจัดการสถานศึกษา — ข้อมูลนักเรียน · เช็กชื่อ · เยี่ยมบ้าน · ตารางเรียน · ประกาศและรายงาน โรงเรียนวังน้ำคู้ศึกษา',
   VERSION:      '1.1.0',
   LAST_UPDATED: '2026-06-01',
   ORG:          'โรงเรียนวังน้ำคู้ศึกษา',
-  LOGO_ICON:    'mortarboard-fill',
+  LOGO_ICON:    'https://lh3.googleusercontent.com/d/1_DeLTLCgL_dy3-qPlMQ23jNpg6-ktKUc',
   TIMEZONE:     'Asia/Bangkok',
   MOTTO:        'ปัญญา เป็นแสงสว่างแห่งโลก',
 
   DEV: {
     NAME:  'ครูที  พชรพล',
-    URL:   'https://www.kruwirat.com',
+    URL:   'https://www.instagram.com/jarn.tee',
     EMAIL: 'phatcharapol.ch@nu.ac.th',
-    LOGO:  'https://lh3.googleusercontent.com/d/1m1Q-kruwirat-avatar'
+    LOGO:  'https://lh3.googleusercontent.com/d/1_DeLTLCgL_dy3-qPlMQ23jNpg6-ktKUc'
   }
 };
 
@@ -69,7 +69,8 @@ var SCHEMAS = {
   ],
   HomeVisits: [
     'id','student_id','class_id','visit_date','address','gps_lat','gps_lng',
-    'photo_url','family_status','economic_status','risk_level','findings',
+    'photo_house_in','photo_house_out','map_photo', /* 👈 เปลี่ยนคอลัมน์เก็บรูปเป็น 3 รูป */
+    'family_status','economic_status','risk_level','findings',
     'recommendation','visited_by','created_at','updated_at',
     'academic_term','live_with','guardian_name','guardian_relation','guardian_education',
     'guardian_occupation','guardian_phone','guardian_idcard','state_welfare',
@@ -102,7 +103,7 @@ var SCHEMAS = {
 var ROLES = ['admin', 'teacher'];
 
 var ROLE_LABEL = {
-  admin:    'ผู้ดูแลระบบ',
+  admin:    'ผู้บริหาร',
   teacher:  'ครู',
 };
 
@@ -173,3 +174,4 @@ var GRADE_BAND_LABEL = {
 var ANNOUNCE_CATS = { 'general': 'ทั่วไป', 'academic': 'วิชาการ', 'urgent': 'ด่วน' };
 var RISK_LABEL = { 'low': 'กลุ่มปกติ', 'medium': 'กลุ่มเสี่ยง', 'high': 'กลุ่มมีปัญหา' };
 var ECON_LABEL = { 'normal': 'ปกติ', 'poor': 'ยากจน', 'extreme_poor': 'ยากจนพิเศษ' };
+
