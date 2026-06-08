@@ -1,7 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
- *  File:        11_Menu.gs — Sheet Menu UI · Initialize · Seed · Warm trigger · About
+ *  SAS · ระบบบริหารจัดการสถานศึกษา (School Administration System)
+ *  File:        11_Menu.gs — Sheet Menu UI
  *  Version:     0.0.1
  *  Last Update: 2026-05-30
  *  Developer:   ครูที
