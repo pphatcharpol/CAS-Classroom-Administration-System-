@@ -1,6 +1,6 @@
 <!--
 ═══════════════════════════════════════════════════════════════
- CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
+ SAS · ระบบบริหารจัดการสถานศึกษา (School Administration System)
  File:        ScriptsCore.html — TH module · A framework · Auth · Shell · Router (eager)
  Version:     1.0.0
  Last Update: 2026-05-30
@@ -183,7 +183,7 @@ var A = {
     var w=window.open('','_blank','width=940,height=780');
     if(!w){A.toast('warn','โปรดอนุญาตป๊อปอัป','เปิดการใช้งานป๊อปอัปในเบราว์เซอร์ก่อนพิมพ์เอกสาร',4500);return;}
     var b=Store.boot||{},app=b.app||{},dev=b.dev||{},st=b.settings||{};
-    var org=opts.org||st.school_name||app.org||'', wm=opts.watermark||app.short||'CAS';
+    var org=opts.org||st.school_name||app.org||'', wm=opts.watermark||app.short||'SAS';
     var docNo=opts.docNo||('DOC-'+new Date().getFullYear());
     var metas=['<span class="pr-meta"><i class="bi bi-printer"></i> พิมพ์เมื่อ '+TH.dateTime(new Date())+'</span>'];
     if(opts.period)metas.push('<span class="pr-meta"><i class="bi bi-clock-history"></i> '+A.esc(opts.period)+'</span>');
@@ -344,12 +344,11 @@ function renderLogin(){
         '<div class="lg-right">' +
           '<div class="lf-head"><h2>เข้าสู่ระบบ</h2><p>ลงชื่อเข้าใช้เพื่อเริ่มต้นทำงาน</p></div>' +
           '<form id="login-form">' +
-            '<div class="field"><label>ชื่อผู้ใช้</label><div class="inwrap"><i class="bi bi-person"></i><input id="lg-user" autocomplete="username" placeholder="เลขประจำตัว หรือ ชื่อผู้ใช้" required></div></div>' +
-            '<div class="field"><label>รหัสผ่าน</label><div class="inwrap"><i class="bi bi-lock"></i><input id="lg-pass" type="password" autocomplete="current-password" placeholder="รหัสผ่าน" required><button type="button" class="eye" id="lg-eye"><i class="bi bi-eye"></i></button></div></div>' +
-            /* ล็อกขนาดปุ่มด้วยคลาส .lg-btn-submit ป้องกันปุ่มดิ้น/ขยายตัวเวลาขึ้น Error */
+            '<div class="field"><label>ชื่อผู้ใช้</label><div class="inwrap"><i class="bi bi-person"></i><input id="lg-user" autocomplete="username" placeholder="ชื่ออีเมล หรือ ชื่อผู้ใช้" required></div></div>' +
+            '<div class="field"><label>รหัสผ่าน</label><div class="inwrap"><i class="bi bi-lock"></i><input id="lg-pass" type="password" autocomplete="current-password" placeholder="รหัสผ่าน 123456" required><button type="button" class="eye" id="lg-eye"><i class="bi bi-eye"></i></button></div></div>' +
             '<button type="submit" class="btn btn-primary btn-block lg-btn-submit" data-state="idle" id="lg-btn"><span class="st st-idle"><i class="bi bi-box-arrow-in-right"></i> เข้าสู่ระบบ</span></button>' +
           '</form>' +
-          '<div class="lg-foot"><i class="bi bi-building"></i> '+A.esc(app.org||'CAS School')+'</div>' +
+          '<div class="lg-foot"><i class="bi bi-building"></i> '+A.esc(app.org||'SAS School')+'</div>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -407,7 +406,7 @@ function renderShell(){
     +'<div class="sb-backdrop" id="sb-backdrop"></div>'
     +'<aside class="sidebar" id="sidebar">'
     +'<div class="sb-header"><div class="sb-brand"><div class="ic"><i class="bi bi-'+(app.logo_icon||'mortarboard-fill')+'"></i></div>'
-    +'<div><b>'+A.esc(app.short||'CAS')+'</b><small>'+A.esc(app.org||'')+'</small></div></div>'
+    +'<div><b>'+A.esc(app.short||'SAS')+'</b><small>'+A.esc(app.org||'')+'</small></div></div>'
     +'<div class="sb-clock"><div class="t" id="sb-clock-t">--:--:--</div><div class="d" id="sb-clock-d">—</div></div></div>'
     +'<nav class="sb-nav">'+navHtml+'</nav>'
     +'<div class="sb-foot"><div class="sb-user" id="sb-user">'+A.avatar(u.photo_url,u.full_name,42)
