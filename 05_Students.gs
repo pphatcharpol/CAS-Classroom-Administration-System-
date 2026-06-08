@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
+ *  SAS · ระบบบริหารจัดการสถานศึกษา (School Administration System)
  *  File:        05_Students.gs — โมดูลชั้นเรียน · นักเรียน · บัญชีผู้ใช้
  *  Version:     0.0.1
  *  Last Update: 2026-05-30
@@ -11,10 +11,15 @@
 
 /* ════════ CLASSES (ชั้นเรียน) ════════════════════════════════════ */
 function Class_enrich_(c, teacherIdx, counts) {
-  var ht = teacherIdx[c.homeroom_teacher_id];
+  var ht1 = teacherIdx[c.homeroom_teacher_id];
+  var ht2 = teacherIdx[c.co_teacher_id];
+  var tNames = [];
+  if (ht1) tNames.push(ht1.full_name);
+  if (ht2) tNames.push(ht2.full_name);
+  
   return Object.assign({}, c, {
     grade_band_label: GRADE_BAND_LABEL[c.grade_band] || c.grade_band,
-    homeroom_name: ht ? ht.full_name : '-',
+    homeroom_name: tNames.length ? tNames.join(' และ ') : '-',
     student_count: counts[c.id] || 0
   });
 }
