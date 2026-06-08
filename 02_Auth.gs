@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
+ *  SAS · ระบบบริหารจัดการสถานศึกษา (School Administration System)
  *  File:        02_Auth.gs — Authentication · SHA-256+Salt · Token session · RBAC · Audit
  *  Version:     0.0.1
  *  Last Update: 2026-05-30
