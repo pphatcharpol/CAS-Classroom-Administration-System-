@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- *  CAS · ระบบงานธุรการชั้นเรียน (Classroom Administration System)
+ *  SAS · ระบบบริหารจัดการสถานศึกษา (School Administration System)
  *  File:        03_Files.gs — Drive storage · โฟลเดอร์คู่สเปรดชีต · อัปโหลดภาพ · lh3 link
  *  Version:     0.0.1
  *  Last Update: 2026-05-30
