@@ -197,4 +197,3 @@ function Visit_overview(user, p) {
     risk: risk, poverty: poverty, totalVisits: visits.length
   };
 }
-
