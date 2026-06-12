@@ -69,14 +69,15 @@ var SCHEMAS = {
   ],
   HomeVisits: [
     'id','student_id','class_id','visit_date','address','gps_lat','gps_lng',
-    'photo_house_in','photo_house_out','map_photo', /* 👈 เปลี่ยนคอลัมน์เก็บรูปเป็น 3 รูป */
+    'photo_house_in','photo_house_out','map_photo', 
     'family_status','economic_status','risk_level','findings',
     'recommendation','visited_by','created_at','updated_at',
     'academic_term','live_with','guardian_name','guardian_relation','guardian_education',
     'guardian_occupation','guardian_phone','guardian_idcard','state_welfare',
     'household_size','household_income','income_per_capita','poverty_status',
     'members_json','survey_json','travel_json','addr_json','photos_json',
-    'consent','cct_request'
+    'consent','cct_request',
+    'institute_json'
   ],
   Announcements: [
     'id','title','body','category','target_role','target_class','pinned',
