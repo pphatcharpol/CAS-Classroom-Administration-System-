@@ -296,19 +296,24 @@ function Seed_run() {
           student_id: s.id, class_id: s.class_id,
           visit_date: cfg_dateOnly_(new Date(Date.now() - _randInt_(5, 60) * 864e5)),
           address: s.address, gps_lat: (13 + Math.random()).toFixed(6), gps_lng: (100 + Math.random()).toFixed(6),
-          photo_house_in: '', photo_house_out: '', map_photo: '', /* 👈 อัปเดต seed */
+          photo_house_in: '', photo_house_out: '', map_photo: '', 
           family_status: _rand_(['together', 'separated', 'divorced', 'father_dead']),
           economic_status: _rand_(['good', 'moderate', 'poor']),
           risk_level: risk, findings: 'สภาพแวดล้อมเหมาะสมต่อการเรียนรู้',
           recommendation: 'ติดตามผลการเรียนอย่างต่อเนื่อง', visited_by: 'system', status: 'active',
           academic_term: 'ภาคเรียนที่ 1/' + year, live_with: _rand_(['parents', 'relatives', 'guardian']),
-          guardian_name: s.parent_name, guardian_relation: s.parent_relation, guardian_occupation: _rand_(['เกษตรกร', 'รับจ้างทั่วไป', 'ค้าขาย', 'พนักงาน']),
+          guardian_name: s.parent_name, guardian_relation: s.parent_relation, 
+          guardian_occupation: _rand_(['เกษตรกร', 'รับจ้างทั่วไป', 'ค้าขาย', 'พนักงาน']),
+          guardian_education: _rand_(['ประถมศึกษา', 'มัธยมศึกษา', 'ปริญญาตรี']),
           guardian_phone: s.parent_phone, guardian_idcard: '', state_welfare: Math.random() < 0.4,
           household_size: size, household_income: income, income_per_capita: pc, poverty_status: pStatus,
           members_json: JSON.stringify([{ name: s.parent_name, relation: s.parent_relation, age: _randInt_(35, 55), income: income, disabled: false, chronic: false }]),
-          survey_json: JSON.stringify(survey), travel_json: JSON.stringify({ method: _rand_(['walk', 'bicycle', 'school_bus', 'own_motorcycle']), distance: _randInt_(1, 15), cost: _randInt_(0, 40) }),
+          survey_json: JSON.stringify(survey), 
+          // เพิ่มระยะเวลา(time) และค่าใช้จ่ายรายวัน(daily) ใน travel_json
+          travel_json: JSON.stringify({ method: _rand_(['walk', 'bicycle', 'school_bus', 'own_motorcycle']), distance: _randInt_(1, 15), time: '0' + _randInt_(0, 1) + ':' + _randInt_(10, 50), cost: _randInt_(0, 40), daily: _randInt_(20, 80) }),
           addr_json: JSON.stringify({ house_no: _randInt_(1, 199), moo: _randInt_(1, 12), province: 'พิษณุโลก' }),
-          photos_json: JSON.stringify({}), consent: true, cct_request: true
+          photos_json: JSON.stringify({}), consent: true, cct_request: true,
+          institute_json: JSON.stringify({})
         });
       }
     });
